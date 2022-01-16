@@ -1,4 +1,3 @@
-#!/usr/local/Caskroom/miniconda/base/envs/picasso/bin/python3
 import h5py as h5
 import numpy as np
 from scipy.io import savemat, loadmat
@@ -17,36 +16,20 @@ if __name__ == '__main__':
     locs = data['locs']
     groups = np.unique(locs['group'])
 
-    picks = [[[], []] for _ in range(len(groups))]
-
-    for i in tqdm(range(len(locs))):
-        loc = locs[i]
-        group = loc['group']
-
-        x, y = loc['x'], loc['y']
-        s = np.linalg.norm([loc['sx'], loc['sy']])
-
-        picks[group][0].append((x, y))
-        picks[group][1].append(s)
-    
+    picks = np.empty(len(groups), dtype='O')
     datatype = np.dtype([('points', 'O'), ('sigma', 'O')])
-    # array = np.empty((1, len(groups)), dtype='O')
-    array = np.empty(len(groups), dtype='O')
 
-    for i in tqdm(range(len(groups))):
-        pick = picks[i]
+    points = np.stack((locs['x'], locs['y']), axis=-1).astype('<f8')
+    sigma = np.linalg.norm((locs['sx'], locs['sy']), axis=0).astype('<f8')
 
-        points = np.array(pick[0]).astype('<f8')
-        # sigma = np.array(pick[1]).astype('<f8')[:,np.newaxis]
-        sigma = np.array(pick[1]).astype('<f8')[:,np.newaxis]
-
-        # array[0,i] = np.array([(points, sigma)], dtype=datatype)[:,np.newaxis]
-        array[i] = np.array([(points, sigma)], dtype=datatype)
+    for i in tqdm(groups):
+        idx = locs['group'] == i
+        picks[i] = np.array([(points[idx], sigma[idx])], dtype=datatype)
 
     out = Path('../data').joinpath(Path(f.with_suffix('').name))
     out.mkdir(exist_ok=True)
 
-    savemat(str(out.joinpath(Path('subParticles.mat'))), { 'subParticles': array })
+    savemat(str(out.joinpath(Path('subParticles.mat'))), { 'subParticles': picks })
 
     # HDF5 NOTES:
     # contains 'locs', which is a Dataset object
