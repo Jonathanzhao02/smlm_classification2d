@@ -1,3 +1,4 @@
+#!/usr/local/Caskroom/miniconda/base/envs/picasso/bin/python3
 import h5py as h5
 import numpy as np
 from scipy.io import savemat, loadmat
@@ -24,7 +25,7 @@ if __name__ == '__main__':
 
     for i in tqdm(groups):
         idx = locs['group'] == i
-        picks[i] = np.array([(points[idx], sigma[idx])], dtype=datatype)
+        picks[i] = np.array([(points[idx], sigma[idx].reshape((-1, 1)))], dtype=datatype)
 
     out = Path('../data').joinpath(Path(f.with_suffix('').name))
     out.mkdir(exist_ok=True)
