@@ -1,33 +1,33 @@
 #!/usr/local/Caskroom/miniconda/base/envs/picasso/bin/python3
-import h5py as h5
 import numpy as np
-from scipy.io import savemat
+from scipy.io import savemat, loadmat
 from pathlib import Path
 from tqdm.auto import tqdm
 
 if __name__ == '__main__':
     import argparse
     parser = argparse.ArgumentParser()
-    parser.add_argument("file", help="Input hdf5 file to convert")
+    parser.add_argument("input", help="Folder of .mat files to merge")
+    parser.add_argument("output", help="Folder to output to")
     args = parser.parse_args()
     
-    f = Path(args.file)
-    data = h5.File(f, 'r')
+    f = Path(args.input)
+    o = Path(args.output)
 
-    locs = data['locs']
-    groups = np.unique(locs['group'])
+    if not f.is_dir():
+        exit()
+    
+    picks = None
 
-    picks = np.empty(len(groups), dtype='O')
-    datatype = np.dtype([('points', 'O'), ('sigma', 'O')])
+    for file in f.iterdir():
+        m = loadmat(file)['subParticles']
 
-    points = np.stack((locs['x'], locs['y']), axis=-1).astype('<f8')
-    sigma = np.linalg.norm((locs['lpx'], locs['lpy']), axis=0).astype('<f8')
+        if picks is None:
+            picks = m
+        else:
+            picks = np.concatenate((picks, m), axis=-1)
 
-    for i in tqdm(groups):
-        idx = locs['group'] == i
-        picks[i] = np.array([(points[idx], sigma[idx].reshape((-1, 1)))], dtype=datatype)
-
-    out = Path('../data').joinpath(Path(f.with_suffix('').name))
+    out = Path('../data').joinpath(o)
     out.mkdir(exist_ok=True)
 
     savemat(str(out.joinpath(Path('subParticles.mat'))), { 'subParticles': picks })
