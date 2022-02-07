@@ -25,7 +25,7 @@ if __name__ == '__main__':
 
     for i in tqdm(groups):
         idx = locs['group'] == i
-        picks[i] = np.array([(points[idx], sigma[idx].reshape((-1, 1)))], dtype=datatype)
+        picks[i] = np.array([(points[idx] - np.mean(points[idx], axis=0), sigma[idx].reshape((-1, 1)))], dtype=datatype)
 
     out = Path('../data').joinpath(Path(f.with_suffix('').name))
     out.mkdir(exist_ok=True)

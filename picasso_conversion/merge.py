@@ -7,8 +7,8 @@ from tqdm.auto import tqdm
 if __name__ == '__main__':
     import argparse
     parser = argparse.ArgumentParser()
-    parser.add_argument("input", help="Folder of .mat files to merge")
-    parser.add_argument("output", help="Folder to output to")
+    parser.add_argument("input", help="Path to folder of .mat files to merge")
+    parser.add_argument("output", help="Name of folder to output to in data")
     args = parser.parse_args()
     
     f = Path(args.input)
