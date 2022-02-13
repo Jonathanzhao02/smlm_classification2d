@@ -15,6 +15,7 @@ DISPLAY_FINAL_CLUSTER = False
 DISPLAY_DISTANCES = False
 DISPLAY_GRID = True
 
+# Template + Weights
 GRID = np.array([
     [1.5, 1.5],
     [1.5, 2.5],
@@ -29,6 +30,8 @@ GRID = np.array([
     [0, -1],
     [1, -1],
 ], dtype=np.float64) * 0.18
+GRID_WEIGHTS = np.ones(GRID.shape[0])
+GRID_WEIGHTS[0:3] = 1.5 # orientation markers weighted more heavily
 
 # KMeans params
 CLASS_SWEEP = list(range(3,13))
@@ -100,9 +103,7 @@ if __name__ == '__main__':
         
             plt.show()
         
-        weights = np.ones(centroids.shape[0])
-        # weights[0:3] = 2.
-        alignment = GridAlignment(GRID, centroids, weights)
+        alignment = GridAlignment(GRID, centroids, GRID_WEIGHTS)
         print('Calculating rough transform')
         alignment.roughClock(0.18 / 4., 4)
         alignment.align([ [-0.18 * 3, 0.18 * 3], [-0.18 * 3, 0.18 * 3], [0.8, 1.2], [0.8, 1.2], [0, 2 * np.pi] ])
