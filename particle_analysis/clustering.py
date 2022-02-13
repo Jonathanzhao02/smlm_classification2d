@@ -57,11 +57,13 @@ class KMeansClusterIdentification():
             raise Exception('Optimal clusters not yet calculated')
         
         self.centroids = np.zeros((self.n_clusters,2))
+        self.cluster_sizes = np.zeros(self.n_clusters)
         self.cluster_ids, _ = self._cluster(self.n_clusters, **kwargs)
 
         for i in range(self.n_clusters):
             ids = self.cluster_ids == i
             self.centroids[i] = np.mean(self.points[ids], axis=0)
+            self.cluster_sizes[i] = np.sum(ids)
         
         if display:
             x = self.points[:,0]
@@ -89,10 +91,12 @@ class DBSCANClusterIdentification():
         self.cluster_ids = model.fit_predict(self.points)
         self.n_clusters = np.max(self.cluster_ids) + 1
         self.centroids = np.zeros((self.n_clusters,2))
+        self.cluster_sizes = np.zeros(self.n_clusters)
 
         for i in range(self.n_clusters):
             ids = self.cluster_ids == i
             self.centroids[i] = np.mean(self.points[ids], axis=0)
+            self.cluster_sizes[i] = np.sum(ids)
 
         if display:
             x = self.points[:,0]
