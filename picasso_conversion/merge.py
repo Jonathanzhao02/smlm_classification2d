@@ -9,10 +9,12 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("input", help="Path to folder of .mat files to merge")
     parser.add_argument("output", help="Name of folder to output to in data")
+    parser.add_argument("--picks", "-p", help="Number of picks to draw from each file", type=int, default=0)
     args = parser.parse_args()
     
     f = Path(args.input)
     o = Path(args.output)
+    n_picks = args.picks
 
     if not f.is_dir():
         exit()
@@ -21,6 +23,9 @@ if __name__ == '__main__':
 
     for file in f.iterdir():
         m = loadmat(file)['subParticles']
+
+        if n_picks > 0:
+            m = np.random.choice(m.flatten(), min(n_picks, m.size), False).reshape((1, -1))
 
         if picks is None:
             picks = m
