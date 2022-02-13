@@ -6,14 +6,19 @@ from scipy.optimize import minimize
 from tqdm.auto import tqdm
 
 class GridAlignment():
-    def __init__(self, grid, points, grid_weights=None, recenter=False):
+    def __init__(self, grid, points, grid_weights=None, point_weights=None, recenter=False):
         self.grid = np.copy(grid)
         self.points = np.copy(points)
 
         if grid_weights is None:
             self.grid_weights = np.ones(grid.shape[0])
         else:
-            self.grid_weights = grid_weights
+            self.grid_weights = grid_weights / np.max(grid_weights)
+        
+        if point_weights is None:
+            self.point_weights = np.ones(points.shae[0])
+        else:
+            self.point_weights = point_weights / np.max(point_weights)
         
         if recenter:
             self.grid[:,0] -= np.mean(self.grid[:,0])
@@ -25,7 +30,7 @@ class GridAlignment():
     
     def squareNNDist(self,tm):
         self.transformGrid(tm)
-        return np.sum(np.multiply(self.nn[0],self.grid_weights[self.nn[1]])**2, dtype=np.float64) / self.points.shape[0]
+        return np.sum(np.multiply(self.nn[0],self.grid_weights[self.nn[1]],self.point_weights)**2, dtype=np.float64) / self.points.shape[0]
     
     # [dx, dy, dsx, dsy, dt]
     def transformGrid(self,tm):

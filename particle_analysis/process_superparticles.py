@@ -103,7 +103,7 @@ if __name__ == '__main__':
         
             plt.show()
         
-        alignment = GridAlignment(GRID, centroids, GRID_WEIGHTS)
+        alignment = GridAlignment(GRID, centroids, GRID_WEIGHTS, cluster.cluster_sizes)
         print('Calculating rough transform')
         alignment.roughClock(0.18 / 4., 4)
         alignment.align([ [-0.18 * 3, 0.18 * 3], [-0.18 * 3, 0.18 * 3], [0.8, 1.2], [0.8, 1.2], [0, 2 * np.pi] ])
