@@ -110,9 +110,12 @@ if __name__ == '__main__':
 
         if DISPLAY_GRID:
             gridTran = alignment.gridTran
+            nn = np.unique(alignment.nn[1])
+            inv_nn = np.setdiff1d(np.arange(GRID.shape[0]), nn, True)
             plt.figure(figsize=(6,6))
             plt.title(f'Class {class_id} Aligned Template')
             plt.plot(x,y,',')
+            plt.plot(gridTran[inv_nn,0], gridTran[inv_nn,1], 'k*')
+            plt.plot(gridTran[nn,0], gridTran[nn,1], '*', color='#00FF00')
             plt.plot(centroids[:,0], centroids[:,1], 'r*')
-            plt.plot(gridTran[:,0], gridTran[:,1], 'k*')
             plt.show()
