@@ -9,9 +9,12 @@ if __name__ == '__main__':
     import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument("file", help="Input hdf5 file to convert")
+    parser.add_argument("--out", "-o", help="Name of output folder", default="")
     parser.add_argument("--tag", "-t", help="Tag string to add before group number", default="")
+    parser.add_argument("--picks", "-p", help="Number of picks to draw from each file", type=int, default=0)
     args = parser.parse_args()
     
+    n_picks = args.picks
     f = Path(args.file)
     data = h5.File(f, 'r')
 
@@ -24,11 +27,20 @@ if __name__ == '__main__':
     points = np.stack((locs['x'], locs['y']), axis=-1).astype('<f8')
     sigma = np.linalg.norm((locs['lpx'], locs['lpy']), axis=0).astype('<f8')
 
+    if n_picks > 0:
+        groups = np.random.choice(groups, min(n_picks, groups.size), False)
+
     for i in tqdm(groups):
         idx = locs['group'] == i
+
+        if np.mean(sigma[idx]) > 1:
+            continue
+
         picks[i] = np.array([(points[idx] - np.mean(points[idx], axis=0), sigma[idx].reshape((-1, 1)), f'{args.tag}{i}')], dtype=datatype)
 
-    out = Path(__file__).parent.joinpath(Path('../data').joinpath(Path(f.with_suffix('').name)))
+    picks = picks[picks != None]
+
+    out = Path(__file__).parent.joinpath(Path('../data').joinpath(args.out or Path(f.with_suffix('').name)))
     out.mkdir(exist_ok=True)
 
     savemat(str(out.joinpath(Path('subParticles.mat'))), { 'subParticles': picks })

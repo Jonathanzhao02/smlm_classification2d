@@ -2,7 +2,6 @@
 import numpy as np
 from scipy.io import savemat, loadmat
 from pathlib import Path
-from tqdm.auto import tqdm
 
 if __name__ == '__main__':
     import argparse
@@ -32,6 +31,7 @@ if __name__ == '__main__':
         else:
             picks = np.concatenate((picks, m), axis=-1)
 
+    print(picks.shape)
     out = Path(__file__).parent.joinpath(Path('../data').joinpath(o))
     out.mkdir(exist_ok=True)
 
