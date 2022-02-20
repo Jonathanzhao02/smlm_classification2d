@@ -11,11 +11,13 @@ VALID_CLUSTER_METHODS = ['kmeans', 'dbscan']
 
 # General params
 DISPLAY_PARTICLE = False
-DISPLAY_FINAL_CLUSTER = False
+DISPLAY_FINAL_CLUSTER = True
 DISPLAY_DISTANCES = False
 DISPLAY_GRID = True
 
 # Template + Weights
+
+# TEMPLATE 1: 3x3 grid w/ 3 offset orientation markers
 GRID = np.array([
     [1.5, 1.5],
     [1.5, 2.5],
@@ -30,13 +32,30 @@ GRID = np.array([
     [0, -1],
     [1, -1],
 ], dtype=np.float64) * 0.18
+
 GRID_WEIGHTS = np.ones(GRID.shape[0])
-GRID_WEIGHTS[0:3] = 1.5 # orientation markers weighted more heavily
+GRID_WEIGHTS[0:3] = 3 # orientation markers weighted more heavily
+
+# TEMPLATE 2: 6x8 grid
+# TODO:
+# Change this to JUST orientation markers
+# Filter clusters by size
+# GRID = np.zeros((48,2), dtype=np.float64)
+
+# for i in range(6):
+#     for j in range(8):
+#         GRID[i * 8 + j] = [-2.5 + i, -3.5 + j]
+
+# GRID *= 0.1
+# GRID_WEIGHTS = np.zeros(GRID.shape[0])
+# GRID_WEIGHTS[0] = 1
 
 # KMeans params
-CLASS_SWEEP = list(range(3,13))
+CLASS_SWEEP = list(range(3,13)) # for template 1
+# CLASS_SWEEP = list(range(9,49)) # for template 2
 DISPLAY_INERTIAS = False
-KMEANS_THRESHOLD = 0.15
+KMEANS_THRESHOLD = 0.15 # threshold for inertia
+SIZE_THRESHOLD = 0.2 # threshold for cluster size filtering
 
 if __name__ == '__main__':
     import argparse
@@ -60,7 +79,6 @@ if __name__ == '__main__':
         y = points[:,1]
 
         if DISPLAY_PARTICLE:
-
             plt.figure(figsize=(6,6))
             plt.title(f'Class {class_id}')
             plt.plot(x,y,',')
@@ -69,8 +87,8 @@ if __name__ == '__main__':
         if cluster_method == 'kmeans':
             cluster = KMeansClusterIdentification(points)
             print('Optimizing number of KMeans clusters')
-            cluster.optimize_clusters(CLASS_SWEEP, KMEANS_THRESHOLD, DISPLAY_INERTIAS)
-            cluster.cluster(DISPLAY_FINAL_CLUSTER)
+            cluster.optimize_clusters(CLASS_SWEEP, KMEANS_THRESHOLD, display_inertia=DISPLAY_INERTIAS)
+            cluster.cluster(DISPLAY_FINAL_CLUSTER, SIZE_THRESHOLD)
         elif cluster_method == 'dbscan':
             cluster = DBSCANClusterIdentification(points)
             cluster.cluster(DISPLAY_FINAL_CLUSTER)
@@ -103,10 +121,10 @@ if __name__ == '__main__':
         
             plt.show()
         
-        alignment = GridAlignment(GRID, centroids, GRID_WEIGHTS, cluster.cluster_sizes)
+        alignment = GridAlignment(GRID, centroids, GRID_WEIGHTS, cluster.cluster_sizes ** 3)
         print('Calculating rough transform')
         alignment.roughClock(0.18 / 4., 4)
-        alignment.align([ [-0.18 * 3, 0.18 * 3], [-0.18 * 3, 0.18 * 3], [0.8, 1.2], [0.8, 1.2], [0, 2 * np.pi] ])
+        alignment.align([ [-0.18 * 3, 0.18 * 3], [-0.18 * 3, 0.18 * 3], [0.9, 1.1], [0.9, 1.1], [0, 2 * np.pi] ])
 
         if DISPLAY_GRID:
             gridTran = alignment.gridTran

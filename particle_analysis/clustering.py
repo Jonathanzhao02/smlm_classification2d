@@ -4,16 +4,12 @@ import numpy as np
 
 from tqdm.auto import tqdm
 
-# KMeans params
-KMEANS_THRESHOLD = 0.15
-CLASS_SWEEP = list(range(3,13))
-
 class KMeansClusterIdentification():
     def __init__(self, points):
         self.points = points
         self.n_clusters = 0
     
-    def optimize_clusters(self, class_sweep=CLASS_SWEEP, thresh=KMEANS_THRESHOLD, display=False, **kwargs):
+    def optimize_clusters(self, class_sweep=list(range(3,13)), thresh=0.15, display=False, display_inertia=False, **kwargs):
         inertias = []
 
         for i in tqdm(class_sweep):
@@ -41,7 +37,7 @@ class KMeansClusterIdentification():
         dists = np.abs(d_inertias - thresh)
         self.n_clusters = class_sweep[:-1][np.argmin(dists)]
 
-        if display:
+        if display_inertia:
             plt.title(f'Inertia Diffs')
             plt.plot(class_sweep[:-1], d_inertias)
             plt.plot(class_sweep[:-1], np.ones((len(class_sweep[:-1]),), dtype=np.float32) * thresh)
@@ -52,7 +48,7 @@ class KMeansClusterIdentification():
         cluster_ids = model.fit_predict(self.points)
         return cluster_ids, model.inertia_
     
-    def cluster(self, display=False, **kwargs):
+    def cluster(self, display=False, size_threshold=0.8, **kwargs):
         if self.n_clusters == 0:
             raise Exception('Optimal clusters not yet calculated')
         
@@ -64,7 +60,23 @@ class KMeansClusterIdentification():
             ids = self.cluster_ids == i
             self.centroids[i] = np.mean(self.points[ids], axis=0)
             self.cluster_sizes[i] = np.sum(ids)
-        
+
+        mean_size = np.mean(self.cluster_sizes)
+        size_thresh = mean_size * size_threshold
+        idxes = np.arange(self.n_clusters)
+        filtered_idxes = idxes[self.cluster_sizes < size_thresh]
+        idxes = np.setdiff1d(idxes, filtered_idxes, True)
+
+        for i in filtered_idxes:
+            self.cluster_ids[self.cluster_ids == i] = -1
+
+        for i in filtered_idxes:
+            self.cluster_ids[self.cluster_ids > i] -= 1
+
+        self.centroids = self.centroids[idxes]
+        self.cluster_sizes = self.cluster_sizes[idxes]
+        self.n_clusters -= filtered_idxes.size
+
         if display:
             x = self.points[:,0]
             y = self.points[:,1]
