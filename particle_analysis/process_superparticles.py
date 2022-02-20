@@ -34,7 +34,7 @@ GRID = np.array([
 ], dtype=np.float64) * 0.18
 
 GRID_WEIGHTS = np.ones(GRID.shape[0])
-GRID_WEIGHTS[0:3] = 3 # orientation markers weighted more heavily
+GRID_WEIGHTS[0:3] = 0.2 # orientation markers weighted more heavily
 
 # TEMPLATE 2: 6x8 grid
 # TODO:
@@ -121,9 +121,9 @@ if __name__ == '__main__':
         
             plt.show()
         
-        alignment = GridAlignment(GRID, centroids, GRID_WEIGHTS, cluster.cluster_sizes ** 3)
+        alignment = GridAlignment(GRID, centroids, GRID_WEIGHTS, 1. / cluster.cluster_sizes)
         print('Calculating rough transform')
-        alignment.roughClock(0.18 / 4., 4)
+        alignment.roughClock(0.18 / 4., 8)
         alignment.align([ [-0.18 * 3, 0.18 * 3], [-0.18 * 3, 0.18 * 3], [0.9, 1.1], [0.9, 1.1], [0, 2 * np.pi] ])
 
         if DISPLAY_GRID:

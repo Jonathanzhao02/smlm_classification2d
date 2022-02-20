@@ -16,7 +16,7 @@ class GridAlignment():
             self.grid_weights = grid_weights / np.max(grid_weights)
         
         if point_weights is None:
-            self.point_weights = np.ones(points.shae[0])
+            self.point_weights = np.ones(points.shape[0])
         else:
             self.point_weights = point_weights / np.max(point_weights)
         
