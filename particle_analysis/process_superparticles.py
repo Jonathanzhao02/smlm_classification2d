@@ -33,20 +33,21 @@ GRID = np.array([
     [1, -1],
 ], dtype=np.float64) * 0.18
 
+ORIENTATION_IDXES = np.array([0, 1, 2])
 GRID_WEIGHTS = np.ones(GRID.shape[0])
-GRID_WEIGHTS[0:3] = 0.2 # orientation markers weighted more heavily
+GRID_WEIGHTS[ORIENTATION_IDXES] = 1.5
 
 # TEMPLATE 2: 6x8 grid
 # TODO:
 # Change this to JUST orientation markers
-# Filter clusters by size
 # GRID = np.zeros((48,2), dtype=np.float64)
 
 # for i in range(6):
 #     for j in range(8):
-#         GRID[i * 8 + j] = [-2.5 + i, -3.5 + j]
+#         GRID[i * 8 + j] = [-3.5 + j, -2.5 + i]
 
 # GRID *= 0.1
+# ORIENTATION_IDXES = np.array([6, 7, 15, 32, 40, 41, 46, 47, 39])
 # GRID_WEIGHTS = np.zeros(GRID.shape[0])
 # GRID_WEIGHTS[0] = 1
 
@@ -60,11 +61,11 @@ SIZE_THRESHOLD = 0.2 # threshold for cluster size filtering
 if __name__ == '__main__':
     import argparse
     parser = argparse.ArgumentParser()
-    parser.add_argument("input", help="Path to classes.mat")
+    parser.add_argument("input", help="Path to folder containing classes.mat")
     parser.add_argument("--cluster", "-c", help="Clustering method to use", default='kmeans')
     args = parser.parse_args()
 
-    f = Path(args.input)
+    f = Path(args.input).joinpath("classes.mat")
     classes = loadmat(f)['classes'][0]
 
     cluster_method = args.cluster
