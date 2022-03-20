@@ -38,19 +38,6 @@ ORIENTATION_IDXES = np.array([0, 1, 2])
 GRID_WEIGHTS = np.ones(GRID.shape[0])
 GRID_WEIGHTS[ORIENTATION_IDXES] = 1.5
 
-LETTER_VALUES = np.array(
-    [0, 0, 0, 32, 16, 8, 4, 2, 1, 0, 0, 0]
-)
-
-IDX_VALUES = np.array(
-    [0, 0, 0, 0, 0, 0, 0, 0, 0, 4, 2, 1]
-)
-
-def readout(grid):
-    letter = np.sum(LETTER_VALUES[grid])
-    idx = np.sum(IDX_VALUES[grid])
-    return f'{letter},{idx}'
-
 # TEMPLATE 2: 6x8 grid
 # TODO:
 # Change this to JUST orientation markers
@@ -84,6 +71,11 @@ if __name__ == '__main__':
     clusters = loadmat(f.joinpath("clusters.mat"))['clusters'][0]
     subParticles = loadmat(f.joinpath("subParticles.mat"))['subParticles'][0]
 
+    datatype = np.dtype([('points', 'O'), ('sigma', 'O'), ('group', 'S1024'), ('raw_read', 'O'), ('correct', 'O')])
+
+    import code
+    code.interact(local=locals())
+
     cluster_method = args.cluster
 
     if cluster_method not in VALID_CLUSTER_METHODS:
@@ -95,13 +87,11 @@ if __name__ == '__main__':
     group_reject_counts = np.zeros(clusters.size)
     global_avg = 0
     raw_reads = np.empty(clusters.size, dtype='O')
-    reads = np.empty(clusters.size, dtype='O')
 
     for i in range(clusters.size):
         raw_reads[i] = np.zeros((clusters[i].size, GRID.shape[0]), dtype=bool)
-        reads[i] = np.empty(clusters[i].size, dtype='S256')
 
-    # Loop over each identified superparticle class
+    # Loop over each identified class
     for class_id,groups in enumerate(clusters):
         group_n_particles = groups.size
         n_particles += groups.size
@@ -109,6 +99,7 @@ if __name__ == '__main__':
         if group_n_particles == 0:
             continue
 
+        # Loop over each particle in each class
         for group_idx,group in enumerate(groups.flatten()):
             start = time()
 
@@ -134,6 +125,7 @@ if __name__ == '__main__':
             n_clusters = cluster.n_clusters
             centroids = cluster.centroids
             
+            # Only for display purposes, can ignore
             if DISPLAY_DISTANCES:
                 dist_matrix = np.zeros((n_clusters,n_clusters))
 
@@ -161,10 +153,11 @@ if __name__ == '__main__':
             
             alignment = GridAlignment(GRID, centroids, GRID_WEIGHTS, 1. / cluster.cluster_sizes)
             print('Calculating rough transform')
-            alignment.roughClock(0.18 / 4., 8)
-            alignment.align([ [-0.18 * 3, 0.18 * 3], [-0.18 * 3, 0.18 * 3], [0.9, 1.1], [0.9, 1.1], [0, 2 * np.pi] ])
-            nn = np.unique(alignment.nn[1])
+            alignment.roughClock(0.18 / 4., 8) # rough rotation with rough translation, args are stepsize and n_steps
+            alignment.align([ [-0.18 * 3, 0.18 * 3], [-0.18 * 3, 0.18 * 3], [0.9, 1.1], [0.9, 1.1], [0, 2 * np.pi] ]) # transform bounds
+            nn = np.unique(alignment.nn[1]) # read out binary
 
+            # Only for display purposes, can ignore
             if DISPLAY_GRID:
                 gridTran = alignment.gridTran
                 inv_nn = np.setdiff1d(np.arange(GRID.shape[0]), nn, True)
@@ -178,10 +171,10 @@ if __name__ == '__main__':
             
             end = time()
 
+            # Record results
             global_avg += end - start
             group_avgs[class_id] += end - start
             raw_reads[class_id][group_idx][nn] = 1
-            reads[class_id][group_idx] = readout(raw_reads[class_id][group_idx])
 
             # Check orientation markers are present
             if all(np.isin(ORIENTATION_IDXES, nn)):
@@ -197,8 +190,10 @@ if __name__ == '__main__':
     print(group_avgs)
     print(global_avg)
 
-    savemat(str(f.joinpath('raw_reads.mat')), { 'raw_reads': raw_reads, 'readouts': reads })
+    # Save all read results
+    savemat(str(f.joinpath('raw_reads.mat')), { 'raw_reads': raw_reads })
 
+    # Create visual representation of counts at each template position
     for class_id in range(clusters.size):
         plt.title(f"Class {class_id}")
         counts = group_counts[class_id]
