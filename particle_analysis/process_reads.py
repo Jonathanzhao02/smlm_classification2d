@@ -78,8 +78,9 @@ if __name__ == '__main__':
 
     extract_field = lambda s: np.vectorize(lambda x: reduce_ar(x[s]), otypes='O')(picks)
 
-    raw_reads = extract_field('raw_read')
-    clusters = extract_field('cluster')
+    raw_reads = np.stack(extract_field('raw_read')).astype(int)
+    correct_reads = extract_field('correct').astype(bool)
+    clusters = extract_field('cluster').astype(int)
     n_clusters = np.unique(clusters).size
 
     clusters_sizes = np.zeros(n_clusters, dtype=int)
@@ -97,7 +98,7 @@ if __name__ == '__main__':
     inds = np.zeros(n_clusters, dtype=int)
 
     for i in range(n_picks):
-        read = raw_reads[i].astype(int)
+        read = raw_reads[i]
         cluster = clusters[i]
 
         # Check orientation markers are present
@@ -130,18 +131,18 @@ if __name__ == '__main__':
     print(list(map(to_string, top_n)))
 
     # Create visual representation of counts at each template position
-    for class_id in range(raw_reads.size):
+    for class_id in range(n_clusters):
         plt.title(f"Class {class_id}")
         counts = group_counts[class_id]
 
         for i,point in enumerate(GRID):
             plt.text(*point, str(counts[i]), ha='center', va='center')
 
-        x = point[:,0]
-        y = point[:,1]
+        x = GRID[:,0]
+        y = GRID[:,1]
 
-        plt.xlim(x.min(),x.max())
-        plt.ylim(y.min(),y.max())
+        plt.xlim(x.min() * 1.5,x.max() * 1.5)
+        plt.ylim(y.min() * 1.5,y.max() * 1.5)
 
         plt.show()
 
