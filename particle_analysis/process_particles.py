@@ -1,4 +1,3 @@
-#!/usr/local/Caskroom/miniconda/base/envs/picasso/bin/python3
 from time import time
 from scipy.io import loadmat, savemat
 from pathlib import Path

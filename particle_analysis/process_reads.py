@@ -1,6 +1,4 @@
-#!/usr/local/Caskroom/miniconda/base/envs/picasso/bin/python3
-from time import time
-from scipy.io import loadmat, savemat
+from scipy.io import loadmat
 from pathlib import Path
 import matplotlib.pyplot as plt
 import numpy as np
@@ -138,6 +136,12 @@ if __name__ == '__main__':
 
         for i,point in enumerate(GRID):
             plt.text(*point, str(counts[i]), ha='center', va='center')
+
+        x = point[:,0]
+        y = point[:,1]
+
+        plt.xlim(x.min(),x.max())
+        plt.ylim(y.min(),y.max())
 
         plt.show()
 

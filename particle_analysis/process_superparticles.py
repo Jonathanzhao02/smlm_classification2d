@@ -1,4 +1,3 @@
-#!/usr/local/Caskroom/miniconda/base/envs/picasso/bin/python3
 from scipy.io import loadmat
 from pathlib import Path
 import matplotlib.pyplot as plt

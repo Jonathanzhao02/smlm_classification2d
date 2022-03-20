@@ -1,4 +1,3 @@
-#!/usr/local/Caskroom/miniconda/base/envs/picasso/bin/python3
 import h5py as h5
 import numpy as np
 from scipy.io import savemat
