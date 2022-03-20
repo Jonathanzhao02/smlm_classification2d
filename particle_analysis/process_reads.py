@@ -66,17 +66,18 @@ def to_string(val):
 if __name__ == '__main__':
     import argparse
     parser = argparse.ArgumentParser()
-    parser.add_argument("input", help="Path to folder containing raw_reads.mat, clusters.mat, and subParticles.mat")
+    parser.add_argument("input", help="Path to folder containing final.mat")
     args = parser.parse_args()
 
     f = Path(args.input)
-    read_data = loadmat(f.joinpath("raw_reads.mat"))
-    raw_reads = read_data['raw_reads'][0]
+    picks = loadmat(f.joinpath("final.mat"))[0]
+    raw_reads = picks['raw_reads'][0]
+
+    import code
+    code.interact(local=locals())
 
     clusters = loadmat(f.joinpath("clusters.mat"))['clusters'][0]
     subParticles = loadmat(f.joinpath("subParticles.mat"))['subParticles'][0]
-
-    datatype = np.dtype([('points', 'O'), ('sigma', 'O'), ('group', 'S1024'), ('raw_read', 'O'), ('correct', 'O')])
 
     group_counts = np.zeros((raw_reads.size, GRID.shape[0]))
     group_reject_counts = np.zeros(raw_reads.size)
