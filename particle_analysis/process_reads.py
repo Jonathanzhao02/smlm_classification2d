@@ -71,6 +71,7 @@ if __name__ == '__main__':
 
     f = Path(args.input)
     picks = loadmat(f.joinpath("final.mat"))['picks'][0]
+    n_picks = picks.size
 
     def reduce_ar(a):
         while hasattr(a, 'shape') and len(a.shape) and a.shape[0] == 1:
@@ -80,45 +81,54 @@ if __name__ == '__main__':
     extract_field = lambda s: np.vectorize(lambda x: reduce_ar(x[s]), otypes='O')(picks)
 
     raw_reads = extract_field('raw_read')
+    clusters = extract_field('cluster')
+    n_clusters = np.unique(clusters).size
 
-    clusters = loadmat(f.joinpath("clusters.mat"))['clusters'][0]
-    subParticles = loadmat(f.joinpath("subParticles.mat"))['subParticles'][0]
+    clusters_sizes = np.zeros(n_clusters, dtype=int)
 
-    group_counts = np.zeros((raw_reads.size, GRID.shape[0]))
-    group_reject_counts = np.zeros(raw_reads.size)
-    readouts = np.empty(raw_reads.size, dtype='O')
+    for i in range(n_clusters):
+        clusters_sizes[i] = np.sum(clusters == i)
 
-    # Loop over each identified class
-    for class_id,reads in enumerate(raw_reads):
-        readouts[class_id] = np.zeros(reads.shape[0], dtype=int)
+    group_counts = np.zeros((n_clusters, GRID.shape[0]), dtype=int)
+    group_reject_counts = np.zeros(n_clusters, dtype=int)
+    readouts = np.empty(n_clusters, dtype='O')
 
-        # Loop over each particle in each class
-        for particle_idx,read in enumerate(reads):
-            # Check orientation markers are present
-            if np.sum(read[ORIENTATION_IDXES]) == ORIENTATION_IDXES.size:
-                group_counts[class_id] += read
-            else:
-                group_reject_counts[class_id] += 1
-            
-            readouts[class_id][particle_idx] = (np.sum(read * LETTER_VALUES) << 3) + np.sum(read * IDX_VALUES)
+    for i in range(n_clusters):
+        readouts[i] = np.zeros(clusters_sizes[i], dtype=int)
+    
+    inds = np.zeros(n_clusters, dtype=int)
+
+    for i in range(n_picks):
+        read = raw_reads[i].astype(int)
+        cluster = clusters[i]
+
+        # Check orientation markers are present
+        if np.sum(read[ORIENTATION_IDXES]) == ORIENTATION_IDXES.size:
+            group_counts[cluster] += read
+        else:
+            group_reject_counts[cluster] += 1
         
-        plt.title(f"Class {class_id}")
-        [n, bins, _] = plt.hist(readouts[class_id], bins=range(1 << INV_ORIENTATION_IDXES.size))
-        plt.ylim(top=reads.shape[0])
+        readouts[cluster][inds[cluster]] = (np.sum(read * LETTER_VALUES) << 3) + np.sum(read * IDX_VALUES)
+        inds[cluster] += 1
+    
+    for i in range(n_clusters):
+        plt.title(f"Class {i}")
+        [n, bins, _] = plt.hist(readouts[i], bins=range(1 << INV_ORIENTATION_IDXES.size))
+        plt.ylim(top=clusters_sizes[i])
         plt.show()
 
-        top_n = bins[np.argsort(n)[::-1][:readouts.shape[0]]].astype(int)
-        print(np.sort(n)[::-1][:readouts.shape[0]])
+        top_n = bins[np.argsort(n)[::-1][:n_clusters]].astype(int)
+        print(np.sort(n)[::-1][:n_clusters])
         print(list(map(to_string, top_n)))
     
     all_readouts = np.concatenate(readouts)
     plt.title("Overall")
     [n, bins, _] = plt.hist(all_readouts, bins=range(1 << INV_ORIENTATION_IDXES.size))
-    plt.ylim(top=all_readouts.shape[0])
+    plt.ylim(top=n_picks)
     plt.show()
 
-    top_n = bins[np.argsort(n)[::-1][:readouts.shape[0]]].astype(int)
-    print(np.sort(n)[::-1][:readouts.shape[0]])
+    top_n = bins[np.argsort(n)[::-1][:n_clusters]].astype(int)
+    print(np.sort(n)[::-1][:n_clusters])
     print(list(map(to_string, top_n)))
 
     # Create visual representation of counts at each template position
