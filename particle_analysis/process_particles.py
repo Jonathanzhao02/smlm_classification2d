@@ -89,10 +89,11 @@ if __name__ == '__main__':
         ('points', 'O'),
         ('sigma', 'O'),
         ('group', 'S1024'),
-        ('cluster', 'i64'),
+        ('cluster', 'i'),
         ('raw_read', 'O'),
         ('correct', 'b'),
         ('centroids', 'O'),
+        ('grid', 'O'),
     ])
 
     cluster_method = args.cluster
@@ -191,18 +192,16 @@ if __name__ == '__main__':
             raw_read = np.zeros(GRID.shape[0])
             raw_read[nn] = 1
 
-            picks[group - 1] = np.array([
+            picks[group - 1] = np.array([(
                 points,
                 subParticles[group - 1]['sigma'][0][0],
-                subParticles[group - 1]['group'],
-                cluster,
+                subParticles[group - 1]['group'][0][0][0],
+                class_id,
                 raw_read,
-                read_match(raw_read, subParticles[group - 1]['group']),
+                read_match(raw_read, subParticles[group - 1]['group'][0][0][0]),
                 centroids,
-            ], dtype=datatype)
-
-            import code
-            code.interact(local=locals())
+                alignment.gridTran,
+            )], dtype=datatype)
         
         group_avgs[class_id] /= group_n_particles
     
@@ -214,6 +213,3 @@ if __name__ == '__main__':
 
     # Save all read results
     savemat(str(f.joinpath('final.mat')), { 'picks': picks })
-
-    import code
-    code.interact(local=locals())
