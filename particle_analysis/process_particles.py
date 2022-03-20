@@ -38,6 +38,19 @@ ORIENTATION_IDXES = np.array([0, 1, 2])
 GRID_WEIGHTS = np.ones(GRID.shape[0])
 GRID_WEIGHTS[ORIENTATION_IDXES] = 1.5
 
+def read_match(read, tag):
+    c = tag[0]
+
+    # 14, 0
+    if c == 'N':
+        return all(read[3:] == [0, 0, 1, 1, 1, 0, 0, 0, 0])
+    # 19, 1
+    elif c == 'S':
+        return all(read[3:] == [0, 1, 0, 0, 1, 1, 0, 0, 1])
+    # 6, 2
+    elif c == 'F':
+        return all(read[3:] == [0, 0, 0, 1, 1, 0, 0, 1, 0])
+
 # TEMPLATE 2: 6x8 grid
 # TODO:
 # Change this to JUST orientation markers
@@ -71,10 +84,16 @@ if __name__ == '__main__':
     clusters = loadmat(f.joinpath("clusters.mat"))['clusters'][0]
     subParticles = loadmat(f.joinpath("subParticles.mat"))['subParticles'][0]
 
-    datatype = np.dtype([('points', 'O'), ('sigma', 'O'), ('group', 'S1024'), ('raw_read', 'O'), ('correct', 'O')])
-
-    import code
-    code.interact(local=locals())
+    picks = np.empty(len(subParticles), dtype='O')
+    datatype = np.dtype([
+        ('points', 'O'),
+        ('sigma', 'O'),
+        ('group', 'S1024'),
+        ('cluster', 'i64'),
+        ('raw_read', 'O'),
+        ('correct', 'b'),
+        ('centroids', 'O'),
+    ])
 
     cluster_method = args.cluster
 
@@ -83,13 +102,7 @@ if __name__ == '__main__':
 
     n_particles = 0
     group_avgs = np.zeros(clusters.size)
-    group_counts = np.zeros((clusters.size, GRID.shape[0]))
-    group_reject_counts = np.zeros(clusters.size)
     global_avg = 0
-    raw_reads = np.empty(clusters.size, dtype='O')
-
-    for i in range(clusters.size):
-        raw_reads[i] = np.zeros((clusters[i].size, GRID.shape[0]), dtype=bool)
 
     # Loop over each identified class
     for class_id,groups in enumerate(clusters):
@@ -174,13 +187,22 @@ if __name__ == '__main__':
             # Record results
             global_avg += end - start
             group_avgs[class_id] += end - start
-            raw_reads[class_id][group_idx][nn] = 1
 
-            # Check orientation markers are present
-            if all(np.isin(ORIENTATION_IDXES, nn)):
-                group_counts[class_id][nn] += 1
-            else:
-                group_reject_counts[class_id] += 1
+            raw_read = np.zeros(GRID.shape[0])
+            raw_read[nn] = 1
+
+            picks[group - 1] = np.array([
+                points,
+                subParticles[group - 1]['sigma'][0][0],
+                subParticles[group - 1]['group'],
+                cluster,
+                raw_read,
+                read_match(raw_read, subParticles[group - 1]['group']),
+                centroids,
+            ], dtype=datatype)
+
+            import code
+            code.interact(local=locals())
         
         group_avgs[class_id] /= group_n_particles
     
@@ -191,17 +213,7 @@ if __name__ == '__main__':
     print(global_avg)
 
     # Save all read results
-    savemat(str(f.joinpath('raw_reads.mat')), { 'raw_reads': raw_reads })
-
-    # Create visual representation of counts at each template position
-    for class_id in range(clusters.size):
-        plt.title(f"Class {class_id}")
-        counts = group_counts[class_id]
-
-        for i,point in enumerate(GRID):
-            plt.text(*point, str(counts[i]), ha='center', va='center')
-
-        plt.show()
+    savemat(str(f.joinpath('final.mat')), { 'picks': picks })
 
     import code
     code.interact(local=locals())
