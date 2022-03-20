@@ -70,11 +70,16 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     f = Path(args.input)
-    picks = loadmat(f.joinpath("final.mat"))[0]
-    raw_reads = picks['raw_reads'][0]
+    picks = loadmat(f.joinpath("final.mat"))['picks'][0]
 
-    import code
-    code.interact(local=locals())
+    def reduce_ar(a):
+        while hasattr(a, 'shape') and len(a.shape) and a.shape[0] == 1:
+            a = a[0]
+        return a
+
+    extract_field = lambda s: np.vectorize(lambda x: reduce_ar(x[s]), otypes='O')(picks)
+
+    raw_reads = extract_field('raw_read')
 
     clusters = loadmat(f.joinpath("clusters.mat"))['clusters'][0]
     subParticles = loadmat(f.joinpath("subParticles.mat"))['subParticles'][0]
