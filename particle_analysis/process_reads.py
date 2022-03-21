@@ -46,7 +46,7 @@ def to_string(val):
     return f"{letter}/{chr(letter + ord('A') - 1)},{idx}"
 
 def true_read(tag):
-    c = bytes.decode(tag)[0]
+    c = tag[0]
 
     # 14, 0
     if c == 'N':
@@ -182,7 +182,8 @@ if __name__ == '__main__':
     n_picks_mis = incorrect_reads.sum()
 
     for i in range(n_picks_mis):
-        pick_target = true_read(groups_mis[i])
+        pick_group = bytes.decode(groups_mis[i])
+        pick_target = true_read(pick_group)
         pick_points = points_mis[i]
         pick_centroids = centroids_mis[i]
         pick_grid = grids_mis[i]
@@ -190,7 +191,7 @@ if __name__ == '__main__':
 
         inv_read = np.logical_not(pick_read)
         plt.figure(figsize=(6,6))
-        plt.title(f'Pick {bytes.decode(groups_mis[i])} Aligned Template')
+        plt.title(f'Pick {pick_group} Aligned Template')
         plt.plot(pick_points[:,0],pick_points[:,1],',')
         plt.plot(pick_centroids[:,0], pick_centroids[:,1], 'r*')
         plt.plot(pick_grid[inv_read,0], pick_grid[inv_read,1], 'k*')

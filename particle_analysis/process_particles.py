@@ -38,7 +38,7 @@ GRID_WEIGHTS = np.ones(GRID.shape[0])
 GRID_WEIGHTS[ORIENTATION_IDXES] = 1.5
 
 def true_read(tag):
-    c = bytes.decode(tag)[0]
+    c = tag[0]
 
     # 14, 0
     if c == 'N':
