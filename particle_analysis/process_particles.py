@@ -37,18 +37,21 @@ ORIENTATION_IDXES = np.array([0, 1, 2])
 GRID_WEIGHTS = np.ones(GRID.shape[0])
 GRID_WEIGHTS[ORIENTATION_IDXES] = 1.5
 
-def read_match(read, tag):
-    c = tag[0]
+def true_read(tag):
+    c = bytes.decode(tag)[0]
 
     # 14, 0
     if c == 'N':
-        return all(read[3:] == [0, 0, 1, 1, 1, 0, 0, 0, 0])
+        return [1,1,1,0, 0, 1, 1, 1, 0, 0, 0, 0]
     # 19, 1
     elif c == 'S':
-        return all(read[3:] == [0, 1, 0, 0, 1, 1, 0, 0, 1])
+        return [1,1,1,0, 1, 0, 0, 1, 1, 0, 0, 1]
     # 6, 2
     elif c == 'F':
-        return all(read[3:] == [0, 0, 0, 1, 1, 0, 0, 1, 0])
+        return [1,1,1,0, 0, 0, 1, 1, 0, 0, 1, 0]
+
+def read_match(read, tag):
+    return all(read[3:] == true_read(tag)[3:])
 
 # TEMPLATE 2: 6x8 grid
 # TODO:

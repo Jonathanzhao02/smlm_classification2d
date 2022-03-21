@@ -2,12 +2,11 @@ from scipy.io import loadmat
 from pathlib import Path
 import matplotlib.pyplot as plt
 import numpy as np
+import os
 
 # General params
-DISPLAY_PARTICLE = False
-DISPLAY_FINAL_CLUSTER = False
-DISPLAY_DISTANCES = False
-DISPLAY_GRID = False
+DISPLAY_HISTOGRAM = False
+DISPLAY_TEMPLATES = False
 
 # Template + Weights
 
@@ -46,6 +45,19 @@ def to_string(val):
     letter = val >> 3
     return f"{letter}/{chr(letter + ord('A') - 1)},{idx}"
 
+def true_read(tag):
+    c = bytes.decode(tag)[0]
+
+    # 14, 0
+    if c == 'N':
+        return [1,1,1,0, 0, 1, 1, 1, 0, 0, 0, 0]
+    # 19, 1
+    elif c == 'S':
+        return [1,1,1,0, 1, 0, 0, 1, 1, 0, 0, 1]
+    # 6, 2
+    elif c == 'F':
+        return [1,1,1,0, 0, 0, 1, 1, 0, 0, 1, 0]
+
 # TEMPLATE 2: 6x8 grid
 # TODO:
 # Change this to JUST orientation markers
@@ -65,9 +77,13 @@ if __name__ == '__main__':
     import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument("input", help="Path to folder containing final.mat")
+    parser.add_argument("--out", "-o", help="Name of output folder", default="")
     args = parser.parse_args()
 
     f = Path(args.input)
+    out_f = f.joinpath(args.out or 'final')
+    out_f.mkdir(exist_ok=True)
+
     picks = loadmat(f.joinpath("final.mat"))['picks'][0]
     n_picks = picks.size
 
@@ -80,6 +96,10 @@ if __name__ == '__main__':
 
     raw_reads = np.stack(extract_field('raw_read')).astype(int)
     correct_reads = extract_field('correct').astype(bool)
+    groups = extract_field('group').astype('S1024')
+    points = extract_field('points')
+    centroids = extract_field('centroids')
+    grids = extract_field('grid')
     clusters = extract_field('cluster').astype(int)
     n_clusters = np.unique(clusters).size
 
@@ -110,41 +130,73 @@ if __name__ == '__main__':
         readouts[cluster][inds[cluster]] = (np.sum(read * LETTER_VALUES) << 3) + np.sum(read * IDX_VALUES)
         inds[cluster] += 1
     
-    for i in range(n_clusters):
-        plt.title(f"Class {i}")
-        [n, bins, _] = plt.hist(readouts[i], bins=range(1 << INV_ORIENTATION_IDXES.size))
-        plt.ylim(top=clusters_sizes[i])
+    if DISPLAY_HISTOGRAM:
+        for i in range(n_clusters):
+            plt.title(f"Class {i}")
+            [n, bins, _] = plt.hist(readouts[i], bins=range(1 << INV_ORIENTATION_IDXES.size))
+            plt.ylim(top=clusters_sizes[i])
+            plt.show()
+
+            top_n = bins[np.argsort(n)[::-1][:n_clusters]].astype(int)
+            print(np.sort(n)[::-1][:n_clusters])
+            print(list(map(to_string, top_n)))
+        
+        all_readouts = np.concatenate(readouts)
+        plt.title("Overall")
+        [n, bins, _] = plt.hist(all_readouts, bins=range(1 << INV_ORIENTATION_IDXES.size))
+        plt.ylim(top=n_picks)
         plt.show()
 
         top_n = bins[np.argsort(n)[::-1][:n_clusters]].astype(int)
         print(np.sort(n)[::-1][:n_clusters])
         print(list(map(to_string, top_n)))
+
+    if DISPLAY_TEMPLATES:
+        # Create visual representation of counts at each template position
+        for class_id in range(n_clusters):
+            plt.title(f"Class {class_id}")
+            counts = group_counts[class_id]
+
+            for i,point in enumerate(GRID):
+                plt.text(*point, str(counts[i]), ha='center', va='center')
+
+            x = GRID[:,0]
+            y = GRID[:,1]
+
+            plt.xlim(x.min() * 1.5,x.max() * 1.5)
+            plt.ylim(y.min() * 1.5,y.max() * 1.5)
+
+            plt.show()
     
-    all_readouts = np.concatenate(readouts)
-    plt.title("Overall")
-    [n, bins, _] = plt.hist(all_readouts, bins=range(1 << INV_ORIENTATION_IDXES.size))
-    plt.ylim(top=n_picks)
-    plt.show()
+    print(f"Correctly read {correct_reads.sum()} / {n_picks} picks, {correct_reads.sum() / n_picks * 100:.2f}%")
 
-    top_n = bins[np.argsort(n)[::-1][:n_clusters]].astype(int)
-    print(np.sort(n)[::-1][:n_clusters])
-    print(list(map(to_string, top_n)))
+    out_path = out_f.joinpath('misclassifications')
+    out_path.mkdir(exist_ok=True)
+    incorrect_reads = np.logical_not(correct_reads)
+    raw_reads_mis = raw_reads[incorrect_reads]
+    groups_mis = groups[incorrect_reads]
+    points_mis = points[incorrect_reads]
+    centroids_mis = centroids[incorrect_reads]
+    clusters_mis = clusters[incorrect_reads]
+    grids_mis = grids[incorrect_reads]
+    n_picks_mis = incorrect_reads.sum()
 
-    # Create visual representation of counts at each template position
-    for class_id in range(n_clusters):
-        plt.title(f"Class {class_id}")
-        counts = group_counts[class_id]
+    for i in range(n_picks_mis):
+        pick_target = true_read(groups_mis[i])
+        pick_points = points_mis[i]
+        pick_centroids = centroids_mis[i]
+        pick_grid = grids_mis[i]
+        pick_read = raw_reads_mis[i].astype(bool)
 
-        for i,point in enumerate(GRID):
-            plt.text(*point, str(counts[i]), ha='center', va='center')
-
-        x = GRID[:,0]
-        y = GRID[:,1]
-
-        plt.xlim(x.min() * 1.5,x.max() * 1.5)
-        plt.ylim(y.min() * 1.5,y.max() * 1.5)
-
+        inv_read = np.logical_not(pick_read)
+        plt.figure(figsize=(6,6))
+        plt.title(f'Pick {bytes.decode(groups_mis[i])} Aligned Template')
+        plt.plot(pick_points[:,0],pick_points[:,1],',')
+        plt.plot(pick_centroids[:,0], pick_centroids[:,1], 'r*')
+        plt.plot(pick_grid[inv_read,0], pick_grid[inv_read,1], 'k*')
+        plt.plot(pick_grid[pick_read,0], pick_grid[pick_read,1], '*', color='#00FF00')
         plt.show()
+
 
 # 0. make poster (come up with outline for next week)
 # 2. identify misclassifications
