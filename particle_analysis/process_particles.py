@@ -96,6 +96,7 @@ if __name__ == '__main__':
         ('correct', 'b'),
         ('centroids', 'O'),
         ('grid', 'O'),
+        ('cost', 'i'),
     ])
 
     cluster_method = args.cluster
@@ -170,7 +171,7 @@ if __name__ == '__main__':
             alignment = GridAlignment(GRID, centroids, GRID_WEIGHTS, 1. / cluster.cluster_sizes)
             print('Calculating rough transform')
             alignment.roughClock(0.18 / 4., 8) # rough rotation with rough translation, args are stepsize and n_steps
-            alignment.align([ [-0.18 * 3, 0.18 * 3], [-0.18 * 3, 0.18 * 3], [0.9, 1.1], [0.9, 1.1], [0, 2 * np.pi] ]) # transform bounds
+            cost = alignment.align([ [-0.18 * 3, 0.18 * 3], [-0.18 * 3, 0.18 * 3], [0.9, 1.1], [0.9, 1.1], [0, 2 * np.pi] ]) # transform bounds
             nn = np.unique(alignment.nn[1]) # read out binary
 
             # Only for display purposes, can ignore
@@ -203,6 +204,7 @@ if __name__ == '__main__':
                 read_match(raw_read, subParticles[group - 1]['group'][0][0][0]),
                 centroids,
                 alignment.gridTran,
+                cost,
             )], dtype=datatype)
         
         group_avgs[class_id] /= group_n_particles

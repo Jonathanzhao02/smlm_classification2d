@@ -39,18 +39,20 @@ class GridAlignment():
         self.dsx = tm[2]
         self.dsy = tm[3]
         self.dt = tm[4]
-        rotMat = np.array([[np.cos(self.dt),-np.sin(self.dt)],[np.sin(self.dt),np.cos(self.dt)]])
-        self.gridTran = np.dot(self.grid,rotMat)
+
         self.gridTran[:,0]*=self.dsx
         self.gridTran[:,1]*=self.dsy
         self.gridTran[:,0]+=self.dx
         self.gridTran[:,1]+=self.dy
+        rotMat = np.array([[np.cos(self.dt),-np.sin(self.dt)],[np.sin(self.dt),np.cos(self.dt)]])
+        self.gridTran = np.dot(self.grid,rotMat)
         self.nnTree = spatial.cKDTree(self.gridTran)
         self.nn = self.nnTree.query(self.points)
     
     def align(self, bounds):
         fval = minimize(self.squareNNDist, [self.dx, self.dy, self.dsx, self.dsy, self.dt], bounds=bounds, method="L-BFGS-B")
         self.dx, self.dy, self.dsx, self.dsy, self.dt = fval.x
+        return self.squareNNDist([self.dx,self.dy,self.dsx,self.dsy,self.dt])
     
     def roughClock(self, gridsize, steps):
         minObj = self.squareNNDist([0,0,1,1,0])
