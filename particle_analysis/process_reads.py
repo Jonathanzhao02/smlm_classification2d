@@ -196,7 +196,8 @@ if __name__ == '__main__':
         plt.plot(pick_centroids[:,0], pick_centroids[:,1], 'r*')
         plt.plot(pick_grid[inv_read,0], pick_grid[inv_read,1], 'k*')
         plt.plot(pick_grid[pick_read,0], pick_grid[pick_read,1], '*', color='#00FF00')
-        plt.show()
+        plt.savefig(out_path.joinpath(f"{pick_group}.png"))
+        plt.close()
 
 
 # 0. make poster (come up with outline for next week)
