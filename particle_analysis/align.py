@@ -39,14 +39,12 @@ class GridAlignment():
         self.dsx = tm[2]
         self.dsy = tm[3]
         self.dt = tm[4]
-
-        self.gridTran = np.copy(self.grid)
+        rotMat = np.array([[np.cos(self.dt),-np.sin(self.dt)],[np.sin(self.dt),np.cos(self.dt)]])
+        self.gridTran = np.dot(self.grid,rotMat)
         self.gridTran[:,0]*=self.dsx
         self.gridTran[:,1]*=self.dsy
         self.gridTran[:,0]+=self.dx
         self.gridTran[:,1]+=self.dy
-        rotMat = np.array([[np.cos(self.dt),-np.sin(self.dt)],[np.sin(self.dt),np.cos(self.dt)]])
-        self.gridTran = np.dot(self.gridTran,rotMat)
         self.nnTree = spatial.cKDTree(self.gridTran)
         self.nn = self.nnTree.query(self.points)
     
