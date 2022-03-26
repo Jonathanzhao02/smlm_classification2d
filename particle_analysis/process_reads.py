@@ -100,6 +100,7 @@ if __name__ == '__main__':
     points = extract_field('points')
     centroids = extract_field('centroids')
     grids = extract_field('grid')
+    costs = extract_field('cost')
     clusters = extract_field('cluster').astype(int)
     n_clusters = np.unique(clusters).size
 
@@ -177,6 +178,7 @@ if __name__ == '__main__':
     groups_mis = groups[incorrect_reads]
     points_mis = points[incorrect_reads]
     centroids_mis = centroids[incorrect_reads]
+    costs_mis = costs[incorrect_reads]
     clusters_mis = clusters[incorrect_reads]
     grids_mis = grids[incorrect_reads]
     n_picks_mis = incorrect_reads.sum()
@@ -188,10 +190,13 @@ if __name__ == '__main__':
         pick_centroids = centroids_mis[i]
         pick_grid = grids_mis[i]
         pick_read = raw_reads_mis[i].astype(bool)
+        pick_cost = costs_mis[i]
+
+        pick_val = (np.sum(pick_read * LETTER_VALUES) << 3) + np.sum(pick_read * IDX_VALUES)
 
         inv_read = np.logical_not(pick_read)
         plt.figure(figsize=(6,6))
-        plt.title(f'Pick {pick_group} Aligned Template')
+        plt.title(f'Pick {pick_group} Aligned Template, Read {to_string(pick_val)}, Cost {pick_cost:.3e}')
         plt.plot(pick_points[:,0],pick_points[:,1],',')
         plt.plot(pick_centroids[:,0], pick_centroids[:,1], 'r*')
         plt.plot(pick_grid[inv_read,0], pick_grid[inv_read,1], 'k*')
@@ -201,14 +206,18 @@ if __name__ == '__main__':
 
 
 # 0. make poster (come up with outline for next week)
-# 2. identify misclassifications
+# 1?. add random starting point
+# 2?. eccentricity (idea below)
 # 4. fix MATLAB 1 group error (combine with nearby clusters)
 # 5. scale sweep + increase nAngles 2x
 # 6. elbow on KMeans on MDS
+# 6.5. rerun everything on repetition code data
 # 7. start on QR deformation correction
 #    a. 2/3 redundancy, 10 data points for each class
 # 7.5. do conventional image analysis, preprocess for all others
 # 8. fine tune model architecture
 # 9. conventional (MLE) comparison
+
+# idea: measure eccentricity of cluster set of points + size/radius, filter number of groups using that
 
 # crytographic hash function

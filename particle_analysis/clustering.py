@@ -48,7 +48,7 @@ class KMeansClusterIdentification():
         cluster_ids = model.fit_predict(self.points)
         return cluster_ids, model.inertia_
     
-    def cluster(self, display=False, size_threshold=0.8, **kwargs):
+    def cluster(self, display=False, size_threshold=0.8, xlim=None, ylim=None, **kwargs):
         if self.n_clusters == 0:
             raise Exception('Optimal clusters not yet calculated')
         
@@ -64,7 +64,7 @@ class KMeansClusterIdentification():
         mean_size = np.mean(self.cluster_sizes)
         size_thresh = mean_size * size_threshold
         idxes = np.arange(self.n_clusters)
-        filtered_idxes = idxes[self.cluster_sizes < size_thresh]
+        filtered_idxes = idxes[self.cluster_sizes < size_thresh][::-1]
         idxes = np.setdiff1d(idxes, filtered_idxes, True)
 
         for i in filtered_idxes:
@@ -89,16 +89,20 @@ class KMeansClusterIdentification():
 
             for j in range(self.n_clusters):
                 ids = self.cluster_ids == j
-                plt.plot(x[ids], y[ids], ',')
-                plt.plot(x_means[j], y_means[j], 'r*')
+                plt.plot(x[ids], y[ids], '.')
             
+            c_handle = plt.plot(x_means, y_means, 'k+', markersize=12, label='centroids')[0]
+            
+            plt.xlim(xlim)
+            plt.ylim(ylim)
+            plt.legend(handles=[c_handle])
             plt.show()
 
 class DBSCANClusterIdentification():
     def __init__(self, points):
         self.points = points
     
-    def cluster(self, display=False, **kwargs):
+    def cluster(self, display=False, xlim=None, ylim=None, **kwargs):
         model = DBSCAN(eps=8e-3, min_samples=40, **kwargs)
         self.cluster_ids = model.fit_predict(self.points)
         self.n_clusters = np.max(self.cluster_ids) + 1
@@ -125,4 +129,6 @@ class DBSCANClusterIdentification():
                 plt.plot(x[ids], y[ids], ',')
                 plt.plot(x_means[i], y_means[i], 'r*')
             
+            plt.xlim(xlim)
+            plt.ylim(ylim)
             plt.show()

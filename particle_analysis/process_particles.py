@@ -10,10 +10,10 @@ from align import GridAlignment
 VALID_CLUSTER_METHODS = ['kmeans', 'dbscan']
 
 # General params
-DISPLAY_PARTICLE = False
-DISPLAY_FINAL_CLUSTER = False
+DISPLAY_PARTICLE = True
+DISPLAY_FINAL_CLUSTER = True
 DISPLAY_DISTANCES = False
-DISPLAY_GRID = False
+DISPLAY_GRID = True
 
 # Template + Weights
 
@@ -96,7 +96,7 @@ if __name__ == '__main__':
         ('correct', 'b'),
         ('centroids', 'O'),
         ('grid', 'O'),
-        ('cost', 'i'),
+        ('cost', 'f8'),
     ])
 
     cluster_method = args.cluster
@@ -118,26 +118,32 @@ if __name__ == '__main__':
 
         # Loop over each particle in each class
         for group_idx,group in enumerate(groups.flatten()):
+            xlim = ylim = None
             start = time()
 
             points = subParticles[group - 1]['points'][0][0]
             x = points[:,0]
             y = points[:,1]
 
+            if subParticles[group - 1]['group'][0][0][0][0] != 'N':
+                continue
+
             if DISPLAY_PARTICLE:
                 plt.figure(figsize=(6,6))
                 plt.title(f'Class {class_id} Group {group}')
-                plt.plot(x,y,',')
+                plt.plot(x,y,'.')
+                # xlim = plt.xlim()
+                # ylim = plt.ylim()
                 plt.show()
 
             if cluster_method == 'kmeans':
                 cluster = KMeansClusterIdentification(points)
                 print('Optimizing number of KMeans clusters')
                 cluster.optimize_clusters(CLASS_SWEEP, KMEANS_THRESHOLD, display_inertia=DISPLAY_INERTIAS)
-                cluster.cluster(DISPLAY_FINAL_CLUSTER, SIZE_THRESHOLD)
+                cluster.cluster(DISPLAY_FINAL_CLUSTER, SIZE_THRESHOLD, xlim=xlim, ylim=ylim)
             elif cluster_method == 'dbscan':
                 cluster = DBSCANClusterIdentification(points)
-                cluster.cluster(DISPLAY_FINAL_CLUSTER)
+                cluster.cluster(DISPLAY_FINAL_CLUSTER, xlim=xlim, ylim=ylim)
 
             n_clusters = cluster.n_clusters
             centroids = cluster.centroids
@@ -152,7 +158,7 @@ if __name__ == '__main__':
                 
                 plt.figure(figsize=(6,6))
                 plt.title(f'Class {class_id} Distances')
-                plt.plot(x,y,',')
+                plt.plot(x,y,'.')
 
                 for i in range(n_clusters):
                     plt.plot(*centroids[i], 'r*')
@@ -166,6 +172,8 @@ if __name__ == '__main__':
                             mid = (centroids[i] + centroids[j]) / 2
                             plt.text(*mid, str(dist_matrix[i,j])[:5], ha='center', va='center')
             
+                # plt.xlim(xlim)
+                # plt.ylim(ylim)
                 plt.show()
             
             alignment = GridAlignment(GRID, centroids, GRID_WEIGHTS, 1. / cluster.cluster_sizes)
@@ -180,10 +188,13 @@ if __name__ == '__main__':
                 inv_nn = np.setdiff1d(np.arange(GRID.shape[0]), nn, True)
                 plt.figure(figsize=(6,6))
                 plt.title(f'Class {class_id} Aligned Template')
-                plt.plot(x,y,',')
-                plt.plot(centroids[:,0], centroids[:,1], 'r*')
-                plt.plot(gridTran[inv_nn,0], gridTran[inv_nn,1], 'k*')
-                plt.plot(gridTran[nn,0], gridTran[nn,1], '*', color='#00FF00')
+                plt.plot(x,y,'.')
+                c_handle = plt.plot(centroids[:,0], centroids[:,1], 'k+', markersize=12, label='Centroids')[0]
+                g0_handle = plt.plot(gridTran[inv_nn,0], gridTran[inv_nn,1], 'k.', markersize=12, label='Template (0)')[0]
+                g1_handle = plt.plot(gridTran[nn,0], gridTran[nn,1], '.', markersize=12, color='#00FF00', label='Template (1)')[0]
+                # plt.xlim(xlim)
+                # plt.ylim(ylim)
+                plt.legend(handles=[c_handle, g0_handle, g1_handle])
                 plt.show()
             
             end = time()
