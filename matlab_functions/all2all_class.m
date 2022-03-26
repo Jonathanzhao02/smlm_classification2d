@@ -26,7 +26,7 @@
 %
 % Teun Huijben, Dec 2020
 
-function Matrix = all2all_class(Particles, scale)
+function Matrix = all2all_class(Particles, scale, nAngles)
 
     % setup pyramid, determine the pyramid height or the number of layers
     N = numel(Particles);
@@ -42,7 +42,7 @@ function Matrix = all2all_class(Particles, scale)
             % perform pairwise registration for each element of all2all
             % matrix
             
-            [param, ~, ~, ~, val] = pairFitting(M, S, scale,6);
+            [param, ~, ~, ~, val] = pairFitting(M, S, scale, nAngles);
 
             % registration parameters, cost function value and idicators
             % are stored in the result structure

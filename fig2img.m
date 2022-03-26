@@ -13,11 +13,19 @@ addpath(genpath('matlab_functions'))
 
 %% LOAD DATASET
 % -- select data set ---
-dataset = 'NSF_120';
-% dataset = 'Cropped_Bima_NSF-1nM_R1-5nM_50ms_TIRF_50Kframes_70mW_locs_render_filter_picked';
+% dataset = 'ASU_3red_300';
+dataset = 'ASU_2red_300';
+% dataset = 'NSF_335';
 % dataset = '200x_simulated_TUD_flame';           %100 with flame, 100 without flame (80% DoL)
 % dataset = '200x_simulated_TUD_mirror';          %10 mirrored, 190 normal (80% DoL)
 % dataset = '456_experimental_TUD_mirror';     %experimental dataset of which a few (~2%) are mirrored
+
+% -- set number of classes --
+K = 6;          %set to 2 for the simulated TUD_flame dataset, this will give the correct classes
+                    %set to 4 for the other two datasets, and continue with STEP 5 using C=2        
+
+% -- choose number of final classes (C<K) --
+C = 3;
 
 outdir = ['output/' dataset];
 if ~exist(outdir,'dir')
@@ -39,10 +47,6 @@ catch E
 end
 
 %% STEP3: k-means clustering
-% -- set number of classes --
-K = 4;          %set to 2 for the simulated TUD_flame dataset, this will give the correct classes
-                    %set to 4 for the other two datasets, and continue with STEP 5 using C=2        
-
 disp("Saving k-means clustering image!");
 
 try
@@ -86,9 +90,6 @@ for i = 1:K
 end
 
 %% (optional) STEP 5: further clustering - Eigen image method (C<K)
-% -- choose number of final classes (C<K) --
-C = 3;
-
 disp('Saving further clustering images!');
 for i = 1:C
     try

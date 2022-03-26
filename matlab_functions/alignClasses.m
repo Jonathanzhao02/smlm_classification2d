@@ -30,7 +30,7 @@
 %
 % Teun Huijben, Dec 2020.
 
-function [superParticle_class] = alignClasses(subParticles, clusters, super, scale)
+function [superParticle_class] = alignClasses(subParticles, clusters, super, scale, nAngles)
 
 K = length(clusters); 
 
@@ -55,10 +55,10 @@ for i = 1:K
      subParticles_clustered_subsamp{i}.sigma = subParticles_clustered_subsamp{i}.sigma(ind); 
 end
 
-all2allMatrix = all2all_class(subParticles_clustered_subsamp,scale); 
+all2allMatrix = all2all_class(subParticles_clustered_subsamp,scale,nAngles); 
 [initAlignedParticles_class, M1_class] = outlier_removal_class(subParticles_clustered,all2allMatrix);
 iter = 3; 
-[~,~,superParticle_class] = one2all_class(initAlignedParticles_class,iter,M1_class,scale); 
+[~,~,superParticle_class] = one2all_class(initAlignedParticles_class,iter,M1_class,scale,nAngles); 
 
 end
 

@@ -32,7 +32,7 @@
 %
 % Teun Huijben, Dec 2020
 
-function [initAlignedParticles_class, superParticle_class] = reconstructPerClassFunction(subParticles, clusters, outdir, scale, iter)
+function [initAlignedParticles_class, superParticle_class] = reconstructPerClassFunction(subParticles, clusters, outdir, scale, iter, nAngles)
 
 clear classResults 
 
@@ -64,7 +64,7 @@ for c = 1:length(clusters)
     end
 %     
     [initAlignedParticles_class{c}, M1_class{c}] = outlier_removal_class(subParticles(members{c}),classResults{c});
-    [superParticle_class{c},~] = one2all_class(initAlignedParticles_class{c},iter,M1_class{c},scale); 
+    [superParticle_class{c},~] = one2all_class(initAlignedParticles_class{c},iter,M1_class{c},scale,nAngles); 
 end
 
 end

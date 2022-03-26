@@ -34,7 +34,7 @@
 %
 % Teun Huijben, Dec 2020.
 
-function [superParticle, MT, Particles] = one2all_class(Particles, iter, oldM, scale)
+function [superParticle, MT, Particles] = one2all_class(Particles, iter, oldM, scale, nAngles)
 
     disp('Bootstapping is started  !');
     initParticle.points = [];
@@ -66,7 +66,7 @@ function [superParticle, MT, Particles] = one2all_class(Particles, iter, oldM, s
             M = Particles{1,i}; 
 %             M = ParticlesUpdated{1,i};
             S = delParticle(Particles, initParticle, i);
-            [parameter{j,i}, ~, ~, ~, ~] = pairFitting_parallel(M, S, scale);
+            [parameter{j,i}, ~, ~, ~, ~] = pairFitting_parallel(M, S, scale, nAngles);
             tmpParticle.points = [tmpParticle.points; transform_by_rigid2d(M.points, parameter{j,i})];
             tmpParticle.sigma = [tmpParticle.sigma; M.sigma];
             Particles{1,i}.points = transform_by_rigid2d(M.points, parameter{j,i}); 
