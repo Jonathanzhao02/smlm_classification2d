@@ -21,7 +21,7 @@ dataset = 'ASU_2red_300';
 % dataset = '456_experimental_TUD_mirror';     %experimental dataset of which a few (~2%) are mirrored
 
 % -- set number of classes --
-K = 6;          %set to 2 for the simulated TUD_flame dataset, this will give the correct classes
+K = 11;          %set to 2 for the simulated TUD_flame dataset, this will give the correct classes
                     %set to 4 for the other two datasets, and continue with STEP 5 using C=2        
 
 % -- choose number of final classes (C<K) --

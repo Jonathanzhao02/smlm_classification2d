@@ -5,7 +5,7 @@ import numpy as np
 import os
 
 # General params
-DISPLAY_HISTOGRAM = False
+DISPLAY_HISTOGRAM = True
 DISPLAY_TEMPLATES = False
 
 # Template + Weights
@@ -208,8 +208,6 @@ if __name__ == '__main__':
 # 0. make poster (come up with outline for next week)
 # 1?. add random starting point
 # 2?. eccentricity (idea below)
-# 4. fix MATLAB 1 group error (combine with nearby clusters)
-# 5. scale sweep + increase nAngles 2x
 # 6. elbow on KMeans on MDS
 # 6.5. rerun everything on repetition code data
 # 7. start on QR deformation correction

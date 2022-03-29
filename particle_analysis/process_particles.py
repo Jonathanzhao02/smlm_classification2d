@@ -10,10 +10,10 @@ from align import GridAlignment
 VALID_CLUSTER_METHODS = ['kmeans', 'dbscan']
 
 # General params
-DISPLAY_PARTICLE = True
-DISPLAY_FINAL_CLUSTER = True
+DISPLAY_PARTICLE = False
+DISPLAY_FINAL_CLUSTER = False
 DISPLAY_DISTANCES = False
-DISPLAY_GRID = True
+DISPLAY_GRID = False
 
 # Template + Weights
 
@@ -125,8 +125,8 @@ if __name__ == '__main__':
             x = points[:,0]
             y = points[:,1]
 
-            if subParticles[group - 1]['group'][0][0][0][0] != 'N':
-                continue
+            #if subParticles[group - 1]['group'][0][0][0][0] != 'N':
+            #    continue
 
             if DISPLAY_PARTICLE:
                 plt.figure(figsize=(6,6))
