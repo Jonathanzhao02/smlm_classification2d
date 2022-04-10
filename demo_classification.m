@@ -89,13 +89,13 @@ toc(tstart)
 
 %optional fusion of all particles (not necessary for classification)
 
-disp("Starting optional fusion!");
+%disp("Starting optional fusion!");
 
-[initAlignedParticles, M1] = outlier_removal(subParticles, [outdir '/all2all_matrix/'], outdir);        %Lie-algebraic averaging
-iters = 3;                                                                                                                                         %number of bootstrap iteration
-[superParticle, ~] = one2all(initAlignedParticles, iters, M1, outdir,scale, nAngles);                                      %bootstrapping
+%[initAlignedParticles, M1] = outlier_removal(subParticles, [outdir '/all2all_matrix/'], outdir);        %Lie-algebraic averaging
+%iters = 3;                                                                                                                                         %number of bootstrap iteration
+%[superParticle, ~] = one2all(initAlignedParticles, iters, M1, outdir,scale, nAngles);                                      %bootstrapping
 
-disp("Finished optional fusion!");
+%disp("Finished optional fusion!");
 
 disp("Finished all2all registration!");
 
