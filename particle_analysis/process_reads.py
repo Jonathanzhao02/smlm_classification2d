@@ -11,6 +11,8 @@ DISPLAY_TEMPLATES = False
 # Template + Weights
 
 # TEMPLATE 1: 3x3 grid w/ 3 offset orientation markers
+DIST_THRESH = 1e-3
+SCALE = 0.18
 GRID = np.array([
     [1.5, 1.5],
     [1.5, 2.5],
@@ -24,7 +26,7 @@ GRID = np.array([
     [-1, -1],
     [0, -1],
     [1, -1],
-], dtype=np.float64) * 0.18
+], dtype=np.float64) * SCALE
 
 ORIENTATION_IDXES = np.array([0, 1, 2])
 INV_ORIENTATION_IDXES = np.setdiff1d(np.arange(GRID.shape[0]), ORIENTATION_IDXES)
@@ -39,6 +41,9 @@ LETTER_VALUES = np.array(
 IDX_VALUES = np.array(
     [0, 0, 0, 0, 0, 0, 0, 0, 0, 4, 2, 1]
 )
+
+def readout(bstring):
+    return (np.sum(bstring * LETTER_VALUES) << 3) + np.sum(bstring * IDX_VALUES)
 
 def to_string(val):
     idx = val & 0b111
@@ -59,19 +64,18 @@ def true_read(tag):
         return [1,1,1,0, 0, 0, 1, 1, 0, 0, 1, 0]
 
 # TEMPLATE 2: 6x8 grid
-# TODO:
-# Change this to JUST orientation markers
+# SCALE = 0.1
 # GRID = np.zeros((48,2), dtype=np.float64)
 
 # for i in range(6):
 #     for j in range(8):
 #         GRID[i * 8 + j] = [-3.5 + j, -2.5 + i]
 
-# GRID *= 0.1
+# GRID *= SCALE
 # ORIENTATION_IDXES = np.array([6, 7, 15, 32, 40, 41, 46, 47, 39])
 # INV_ORIENTATION_IDXES = np.setdiff1d(np.arange(GRID.shape[0]), ORIENTATION_IDXES)
 # GRID_WEIGHTS = np.zeros(GRID.shape[0])
-# GRID_WEIGHTS[0] = 1
+# GRID_WEIGHTS[ORIENTATION_IDXES] = 1
 
 if __name__ == '__main__':
     import argparse
@@ -81,11 +85,10 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     f = Path(args.input)
-    out_f = f.joinpath(args.out or 'final')
+    out_f = f.joinpath(args.out or 'final_imp')
     out_f.mkdir(exist_ok=True)
 
-    picks = loadmat(f.joinpath("final.mat"))['picks'][0]
-    n_picks = picks.size
+    picks = loadmat(f.joinpath("final_imp.mat"))['picks'][0]
 
     def reduce_ar(a):
         while hasattr(a, 'shape') and len(a.shape) and a.shape[0] == 1:
@@ -103,6 +106,32 @@ if __name__ == '__main__':
     costs = extract_field('cost')
     clusters = extract_field('cluster').astype(int)
     n_clusters = np.unique(clusters).size
+
+    filt_idx = costs < DIST_THRESH
+
+    n_picks = np.sum(filt_idx)
+    print(f"Filtered out {picks.size - n_picks} / {picks.size}, {100 * (picks.size - n_picks) / picks.size:.2f}%")
+
+    distr = {}
+
+    for i in np.arange(picks.size)[np.logical_not(filt_idx)]:
+        v = to_string(readout(true_read(bytes.decode(groups[i]))))
+        if v in distr:
+            distr[v] += 1
+        else:
+            distr[v] = 1
+    
+    raw_reads = raw_reads[filt_idx]
+    correct_reads = correct_reads[filt_idx]
+    groups = groups[filt_idx]
+    points = points[filt_idx]
+    centroids = centroids[filt_idx]
+    grids = grids[filt_idx]
+    costs = costs[filt_idx]
+    clusters = clusters[filt_idx]
+    
+    print("Filtered distribution (based on true read):")
+    print(distr)
 
     clusters_sizes = np.zeros(n_clusters, dtype=int)
 
@@ -128,7 +157,7 @@ if __name__ == '__main__':
         else:
             group_reject_counts[cluster] += 1
         
-        readouts[cluster][inds[cluster]] = (np.sum(read * LETTER_VALUES) << 3) + np.sum(read * IDX_VALUES)
+        readouts[cluster][inds[cluster]] = readout(read)
         inds[cluster] += 1
     
     if DISPLAY_HISTOGRAM:
@@ -192,7 +221,7 @@ if __name__ == '__main__':
         pick_read = raw_reads_mis[i].astype(bool)
         pick_cost = costs_mis[i]
 
-        pick_val = (np.sum(pick_read * LETTER_VALUES) << 3) + np.sum(pick_read * IDX_VALUES)
+        pick_val = readout(pick_read)
 
         inv_read = np.logical_not(pick_read)
         plt.figure(figsize=(6,6))
@@ -205,10 +234,10 @@ if __name__ == '__main__':
         plt.close()
 
 
-# 0. make poster (come up with outline for next week)
-# 1?. add random starting point
 # 2?. eccentricity (idea below)
-# 6. elbow on KMeans on MDS
+# 3. try KDE/mean-shift
+# 4. refine alignment
+# 6. elbow on KMeans on MDS (NSF)
 # 6.5. rerun everything on repetition code data
 # 7. start on QR deformation correction
 #    a. 2/3 redundancy, 10 data points for each class

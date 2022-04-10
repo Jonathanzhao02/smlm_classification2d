@@ -3,10 +3,10 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import numpy as np
 
-from clustering import KMeansClusterIdentification, DBSCANClusterIdentification
+from clustering import KMeansClusterIdentification, DBSCANClusterIdentification, MeanShiftClusterIdentification
 from align import GridAlignment
 
-VALID_CLUSTER_METHODS = ['kmeans', 'dbscan']
+VALID_CLUSTER_METHODS = ['kmeans', 'dbscan', 'meanshift']
 
 # General params
 DISPLAY_PARTICLE = False
@@ -17,45 +17,59 @@ DISPLAY_GRID = True
 # Template + Weights
 
 # TEMPLATE 1: 3x3 grid w/ 3 offset orientation markers
-GRID = np.array([
-    [1.5, 1.5],
-    [1.5, 2.5],
-    [0.5, 2.5],
-    [-1, 1],
-    [0, 1],
-    [1, 1],
-    [-1, 0],
-    [0, 0],
-    [1, 0],
-    [-1, -1],
-    [0, -1],
-    [1, -1],
-], dtype=np.float64) * 0.18
+# SCALE = 0.18
+# GRID = np.array([
+#     [1.5, 1.5],
+#     [1.5, 2.5],
+#     [0.5, 2.5],
+#     [-1, 1],
+#     [0, 1],
+#     [1, 1],
+#     [-1, 0],
+#     [0, 0],
+#     [1, 0],
+#     [-1, -1],
+#     [0, -1],
+#     [1, -1],
+# ], dtype=np.float64) * SCALE
 
-ORIENTATION_IDXES = np.array([0, 1, 2])
-GRID_WEIGHTS = np.ones(GRID.shape[0])
-GRID_WEIGHTS[ORIENTATION_IDXES] = 1.5
+# ORIENTATION_IDXES = np.array([0, 1, 2])
+# GRID_WEIGHTS = np.ones(GRID.shape[0])
+# GRID_WEIGHTS[ORIENTATION_IDXES] = 1.5
+# BOUNDS = [[-SCALE * 3, SCALE * 3], [-SCALE * 3, SCALE * 3], [0.9, 1.1], [0.9, 1.1], [0, 2 * np.pi]]
 
 # TEMPLATE 2: 6x8 grid
-# TODO:
-# Change this to JUST orientation markers
-# GRID = np.zeros((48,2), dtype=np.float64)
+SCALE = 0.1
+GRID = np.zeros((48,2), dtype=np.float64)
 
-# for i in range(6):
-#     for j in range(8):
-#         GRID[i * 8 + j] = [-3.5 + j, -2.5 + i]
+for i in range(6):
+    for j in range(8):
+        GRID[i * 8 + j] = [-3.5 + j, -2.5 + i]
 
-# GRID *= 0.1
-# ORIENTATION_IDXES = np.array([6, 7, 15, 32, 40, 41, 46, 47, 39])
-# GRID_WEIGHTS = np.zeros(GRID.shape[0])
-# GRID_WEIGHTS[0] = 1
+GRID *= SCALE
+ORIENTATION_IDXES = np.array([6, 7, 15, 32, 40, 41, 46, 47, 39])
+GRID_WEIGHTS = np.ones(GRID.shape[0])
+GRID_WEIGHTS[ORIENTATION_IDXES] = 0.2
+BOUNDS = [[-SCALE * 3, SCALE * 3], [-SCALE * 3, SCALE * 3], [0.7, 0.9], [0.7, 0.9], [0, 2 * np.pi]]
 
 # KMeans params
-CLASS_SWEEP = list(range(3,13)) # for template 1
-# CLASS_SWEEP = list(range(9,49)) # for template 2
 DISPLAY_INERTIAS = False
-KMEANS_THRESHOLD = 0.15 # threshold for inertia
-SIZE_THRESHOLD = 0.2 # threshold for cluster size filtering
+
+# For template 1
+# CLASS_SWEEP = list(range(3,13))
+# KMEANS_THRESHOLD = 0.15 # threshold for inertia
+# SIZE_THRESHOLD = 0.5 # threshold for cluster size filtering
+
+# For template 2
+CLASS_SWEEP = list(range(9,49))
+KMEANS_THRESHOLD = 0.3
+SIZE_THRESHOLD = 0.5
+
+# MeanShift params
+# calculated through average x/y uncertainty across all localizations
+# BANDWIDTH = 0.0435 # for NSF
+# BANDWIDTH = 0.0238 # for 3-repetition ASU
+BANDWIDTH = 0.0323 # for 2-repetition ASU
 
 if __name__ == '__main__':
     import argparse
@@ -88,10 +102,16 @@ if __name__ == '__main__':
             cluster = KMeansClusterIdentification(points)
             print('Optimizing number of KMeans clusters')
             cluster.optimize_clusters(CLASS_SWEEP, KMEANS_THRESHOLD, display_inertia=DISPLAY_INERTIAS)
+            print('Performing K-means')
             cluster.cluster(DISPLAY_FINAL_CLUSTER, SIZE_THRESHOLD)
         elif cluster_method == 'dbscan':
+            print('Performing DBSCAN')
             cluster = DBSCANClusterIdentification(points)
             cluster.cluster(DISPLAY_FINAL_CLUSTER)
+        elif cluster_method == 'meanshift':
+            print('Performing mean shift')
+            cluster = MeanShiftClusterIdentification(points)
+            cluster.cluster(DISPLAY_FINAL_CLUSTER, BANDWIDTH)
 
         n_clusters = cluster.n_clusters
         centroids = cluster.centroids
@@ -122,9 +142,9 @@ if __name__ == '__main__':
             plt.show()
         
         alignment = GridAlignment(GRID, centroids, GRID_WEIGHTS, 1. / cluster.cluster_sizes)
-        print('Calculating rough transform')
-        alignment.roughClock(0.18 / 4., 8)
-        alignment.align([ [-0.18 * 3, 0.18 * 3], [-0.18 * 3, 0.18 * 3], [0.9, 1.1], [0.9, 1.1], [0, 2 * np.pi] ])
+        print('Calculating transform')
+        #cost, _ = alignment.align(BOUNDS, method='rough', method_args={ 'gridsize': SCALE / 4., 'steps': 8 })
+        cost, _ = alignment.align(BOUNDS, method='differential_evolution')
 
         if DISPLAY_GRID:
             gridTran = alignment.gridTran

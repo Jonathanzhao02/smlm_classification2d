@@ -1,12 +1,14 @@
 import numpy as np
 import numba as _numba
 from scipy import spatial
-from scipy.optimize import minimize
+from scipy.optimize import minimize, dual_annealing, shgo, differential_evolution
 
 from tqdm.auto import tqdm
 
+import matplotlib.pyplot as plt
+
 class GridAlignment():
-    def __init__(self, grid, points, grid_weights=None, point_weights=None, recenter=False):
+    def __init__(self, grid, points, grid_weights=None, point_weights=None, orientation_idxes=None, recenter=False):
         self.grid = np.copy(grid)
         self.points = np.copy(points)
 
@@ -20,6 +22,11 @@ class GridAlignment():
         else:
             self.point_weights = point_weights / np.max(point_weights)
         
+        if orientation_idxes is None:
+            self.orientation_idxes = np.empty(0)
+        else:
+            self.orientation_idxes = orientation_idxes
+        
         if recenter:
             self.grid[:,0] -= np.mean(self.grid[:,0])
             self.grid[:,1] -= np.mean(self.grid[:,1])
@@ -30,7 +37,8 @@ class GridAlignment():
     
     def squareNNDist(self,tm):
         self.transformGrid(tm)
-        return np.sum(np.multiply(self.nn[0],self.grid_weights[self.nn[1]],self.point_weights)**2, dtype=np.float64) / self.points.shape[0]
+        multiplier = (np.setdiff1d(self.orientation_idxes, self.nn[1]).size + 1) ** 2
+        return np.sum(np.multiply(self.nn[0],self.grid_weights[self.nn[1]],self.point_weights)**2, dtype=np.float64) * multiplier / self.points.shape[0]
     
     # [dx, dy, dsx, dsy, dt]
     def transformGrid(self,tm):
@@ -48,10 +56,61 @@ class GridAlignment():
         self.nnTree = spatial.cKDTree(self.gridTran)
         self.nn = self.nnTree.query(self.points)
     
-    def align(self, bounds):
-        fval = minimize(self.squareNNDist, [self.dx, self.dy, self.dsx, self.dsy, self.dt], bounds=bounds, method="L-BFGS-B")
+    def plot_landscape(self, bounds, n_steps=(40,40,40), plot_original=True):
+        tr_old = [self.dx, self.dy, self.dsx, self.dsy, self.dt]
+        dx_bounds = bounds[0]
+        dy_bounds = bounds[1]
+        dt_bounds = bounds[4]
+
+        dx_space = np.linspace(*dx_bounds, n_steps[0])
+        dy_space = np.linspace(*dy_bounds, n_steps[1])
+        dt_space = np.linspace(*dt_bounds, n_steps[2])
+
+        x = np.repeat(dx_space, n_steps[1] * n_steps[2])
+        y = np.tile(np.repeat(dy_space, n_steps[2]), n_steps[0])
+        z = np.tile(dt_space, n_steps[0] * n_steps[1])
+        c = np.zeros(n_steps[0] * n_steps[1] * n_steps[2])
+
+        for i,dx in enumerate(dx_space):
+            for j,dy in enumerate(dy_space):
+                for k,dt in enumerate(dt_space):
+                    idx = k + j * n_steps[1] + i * n_steps[1] * n_steps[0]
+                    c[idx] = self.squareNNDist([dx, dy, self.dsx, self.dsy, dt])
+        
+        feasible = c < 2e-2
+        c = np.log10(c)
+
+        x = x[feasible]
+        y = y[feasible]
+        z = z[feasible]
+        c = c[feasible]
+
+        fig = plt.figure(figsize=(12,24))
+        ax = fig.add_subplot(projection='3d')
+        ax.set_xlabel("dx", fontsize=20)
+        ax.set_ylabel("dy", fontsize=20)
+        ax.set_zlabel("dt", fontsize=20)
+        img = ax.scatter(x, y, z, c=c, alpha=0.8)
+        fig.colorbar(img)
+
+        if plot_original:
+            d = self.squareNNDist(tr_old)
+            ax.plot(self.dx, self.dy, self.dt, 'ro', markersize=20, alpha=1)
+
+        plt.show()
+                    
+    def align(self, bounds, method='rough', method_args={}):
+        if method == 'differential_evolution':
+            fval = differential_evolution(self.squareNNDist, bounds=bounds, maxiter=5000, tol=0, atol=1e-3, recombination=0.5, init='halton')
+        elif method == 'shgo':
+            fval = shgo(self.squareNNDist, bounds=bounds, **method_args)
+        elif method == 'dual_annealing':
+            fval = dual_annealing(self.squareNNDist, bounds=bounds, maxiter=3000, **method_args)
+        elif method == 'rough':
+            self.roughClock(**method_args)
+            fval = minimize(self.squareNNDist, [self.dx, self.dy, self.dsx, self.dsy, self.dt], bounds=bounds, method="L-BFGS-B")
         self.dx, self.dy, self.dsx, self.dsy, self.dt = fval.x
-        return self.squareNNDist([self.dx,self.dy,self.dsx,self.dsy,self.dt])
+        return fval.fun, fval.x
     
     def roughClock(self, gridsize, steps):
         minObj = self.squareNNDist([0,0,1,1,0])
@@ -62,7 +121,7 @@ class GridAlignment():
             dx *= gridsize
             for dy in range(-steps,steps + 1):
                 dy *= gridsize
-                for thetaId in range(360):
+                for thetaId in range(0,360,5):
                     theta = thetaId*np.pi/180
                     obj = self.squareNNDist([dx,dy,self.dsx,self.dsy,theta])
                     if obj<minObj:

@@ -1,4 +1,4 @@
-from sklearn.cluster import KMeans, DBSCAN
+from sklearn.cluster import KMeans, DBSCAN, MeanShift
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -132,3 +132,55 @@ class DBSCANClusterIdentification():
             plt.xlim(xlim)
             plt.ylim(ylim)
             plt.show()
+
+class MeanShiftClusterIdentification():
+    def __init__(self, points):
+        self.points = points
+    
+    def cluster(self, display=False, bandwidth=None, size_threshold=0.8, xlim=None, ylim=None, **kwargs):
+        model = MeanShift(bandwidth=bandwidth, **kwargs)
+        self.cluster_ids = model.fit_predict(self.points)
+        self.n_clusters = np.max(self.cluster_ids) + 1
+        self.centroids = np.zeros((self.n_clusters,2))
+        self.cluster_sizes = np.zeros(self.n_clusters)
+
+        for i in range(self.n_clusters):
+            ids = self.cluster_ids == i
+            self.centroids[i] = np.mean(self.points[ids], axis=0)
+            self.cluster_sizes[i] = np.sum(ids)
+        
+        mean_size = np.mean(self.cluster_sizes)
+        size_thresh = mean_size * size_threshold
+        idxes = np.arange(self.n_clusters)
+        filtered_idxes = idxes[self.cluster_sizes < size_thresh][::-1]
+        idxes = np.setdiff1d(idxes, filtered_idxes, True)
+
+        for i in filtered_idxes:
+            self.cluster_ids[self.cluster_ids == i] = -1
+
+        for i in filtered_idxes:
+            self.cluster_ids[self.cluster_ids > i] -= 1
+
+        self.centroids = self.centroids[idxes]
+        self.cluster_sizes = self.cluster_sizes[idxes]
+        self.n_clusters -= filtered_idxes.size
+
+        if display:
+            x = self.points[:,0]
+            y = self.points[:,1]
+
+            x_means = self.centroids[:,0]
+            y_means = self.centroids[:,1]
+
+            plt.figure(figsize=(6,6))
+            plt.title(f'Clusters {self.n_clusters}')
+
+            for i in range(self.n_clusters):
+                ids = self.cluster_ids == i
+                plt.plot(x[ids], y[ids], ',')
+                plt.plot(x_means[i], y_means[i], 'r*')
+            
+            plt.xlim(xlim)
+            plt.ylim(ylim)
+            plt.show()
+
