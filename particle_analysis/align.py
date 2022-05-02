@@ -101,14 +101,16 @@ class GridAlignment():
                     
     def align(self, bounds, method='rough', method_args={}):
         if method == 'differential_evolution':
-            fval = differential_evolution(self.squareNNDist, bounds=bounds, maxiter=5000, tol=0, atol=1e-3, recombination=0.5, init='halton')
+            fval = differential_evolution(self.squareNNDist, bounds=bounds, **method_args)
         elif method == 'shgo':
             fval = shgo(self.squareNNDist, bounds=bounds, **method_args)
         elif method == 'dual_annealing':
-            fval = dual_annealing(self.squareNNDist, bounds=bounds, maxiter=3000, **method_args)
+            fval = dual_annealing(self.squareNNDist, bounds=bounds, **method_args)
         elif method == 'rough':
-            self.roughClock(**method_args)
-            fval = minimize(self.squareNNDist, [self.dx, self.dy, self.dsx, self.dsy, self.dt], bounds=bounds, method="L-BFGS-B")
+            self.roughClock(**method_args["init"])
+            fval = minimize(self.squareNNDist, [self.dx, self.dy, self.dsx, self.dsy, self.dt], bounds=bounds, **method_args["final"])
+        else:
+            raise Exception(f"Invalid optimization method: {method}")
         self.dx, self.dy, self.dsx, self.dsy, self.dt = fval.x
         return fval.fun, fval.x
     

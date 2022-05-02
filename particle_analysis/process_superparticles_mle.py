@@ -3,14 +3,11 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import numpy as np
 
-from clustering import KMeansClusterIdentification, DBSCANClusterIdentification, MeanShiftClusterIdentification
-from align import GridAlignment
-
-VALID_CLUSTER_METHODS = ['kmeans', 'dbscan', 'meanshift']
+from align import LocalizationCluster
 
 # General params
 DISPLAY_PARTICLE = True
-DISPLAY_FINAL_CLUSTER = True
+DISPLAY_FINAL_CLUSTER = False
 DISPLAY_DISTANCES = False
 DISPLAY_GRID = True
 
@@ -99,29 +96,16 @@ BOUNDS = [[-SCALE * 3, SCALE * 3], [-SCALE * 3, SCALE * 3], [0.9, 1.1], [0.9, 1.
 #     read = apply_repetition(read)
 #     return all(read == true_read(tag))
 
-# KMeans params
-DISPLAY_INERTIAS = False
-
-# For template 1
-CLASS_SWEEP = list(range(3,13))
-KMEANS_THRESHOLD = 0.15 # threshold for inertia
-SIZE_THRESHOLD = 0.5 # threshold for cluster size filtering
-
-# For template 2
-# CLASS_SWEEP = list(range(9,49))
-# KMEANS_THRESHOLD = 0.3
-# SIZE_THRESHOLD = 0.5
-
-# MeanShift params
 # calculated through average x/y uncertainty across all localizations
-BANDWIDTH = 0.06 # empirical for NSF
-# BANDWIDTH = 0.0435 # for NSF
+# BANDWIDTH = 0.06 # empirical for NSF
+BANDWIDTH = 0.0435 # for NSF
 # BANDWIDTH = 0.0238 # for 3-repetition ASU
+# BANDWIDTH = 0.035 # empirical for 2-repetition ASU
 # BANDWIDTH = 0.0323 # for 2-repetition ASU
 
 # For template 1
 TOP_N_CLUSTERS = 3
-SIZE_THRESHOLD_MEANSHIFT = 0.5
+SIZE_THRESHOLD_MEANSHIFT = 0.3
 
 # For template 2
 # TOP_N_CLUSTERS = 9
@@ -131,22 +115,18 @@ if __name__ == '__main__':
     import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument("input", help="Path to folder containing classes.mat")
-    parser.add_argument("--cluster", "-c", help="Clustering method to use", default='kmeans')
     args = parser.parse_args()
 
     f = Path(args.input).joinpath("classes.mat")
     classes = loadmat(f)['classes'][0]
-
-    cluster_method = args.cluster
-
-    if cluster_method not in VALID_CLUSTER_METHODS:
-        raise Exception("Invalid cluster method! Possible values are " + ", ".join(VALID_CLUSTER_METHODS))
 
     # Loop over each identified superparticle class
     for class_id in range(len(classes)):
         points = classes[class_id][0,-1]
         x = points[:,0]
         y = points[:,1]
+        sigma = np.zeros(x.size)
+        sigma[:] = BANDWIDTH
 
         if DISPLAY_PARTICLE:
             plt.figure(figsize=(6,6))
@@ -154,63 +134,19 @@ if __name__ == '__main__':
             plt.plot(x,y,',')
             plt.show()
 
-        if cluster_method == 'kmeans':
-            cluster = KMeansClusterIdentification(points)
-            print('Optimizing number of KMeans clusters')
-            cluster.optimize_clusters(CLASS_SWEEP, KMEANS_THRESHOLD, display_inertia=DISPLAY_INERTIAS)
-            print('Performing K-means')
-            cluster.cluster(DISPLAY_FINAL_CLUSTER, SIZE_THRESHOLD)
-        elif cluster_method == 'dbscan':
-            print('Performing DBSCAN')
-            cluster = DBSCANClusterIdentification(points)
-            cluster.cluster(DISPLAY_FINAL_CLUSTER)
-        elif cluster_method == 'meanshift':
-            print('Performing mean shift')
-            cluster = MeanShiftClusterIdentification(points)
-            cluster.cluster(DISPLAY_FINAL_CLUSTER, BANDWIDTH, SIZE_THRESHOLD_MEANSHIFT)
-
-        n_clusters = cluster.n_clusters
-        centroids = cluster.centroids
-        
-        if DISPLAY_DISTANCES:
-            dist_matrix = np.zeros((n_clusters,n_clusters))
-
-            for i in range(n_clusters - 1):
-                for j in range(i+1, n_clusters):
-                    dist_matrix[i,j] = np.linalg.norm(centroids[i] - centroids[j], ord=2)
-            
-            plt.figure(figsize=(6,6))
-            plt.title(f'Class {class_id} Distances')
-            plt.plot(x,y,',')
-
-            for i in range(n_clusters):
-                plt.plot(*centroids[i], 'r*')
-            
-            dist_mean = np.mean(dist_matrix[dist_matrix > 0])
-            
-            for i in range(n_clusters - 1):
-                for j in range(i+1, n_clusters):
-                    if dist_matrix[i,j] < dist_mean:
-                        plt.plot([centroids[i][0], centroids[j][0]], [centroids[i][1], centroids[j][1]], 'r--')
-                        mid = (centroids[i] + centroids[j]) / 2
-                        plt.text(*mid, str(dist_matrix[i,j])[:5], ha='center', va='center')
-        
-            plt.show()
-        
-        alignment = GridAlignment(GRID, centroids, GRID_WEIGHTS, 1. / cluster.cluster_sizes, ORIENTATION_IDXES)
+        alignment = LocalizationCluster(GRID, np.array([x, y, sigma]).T, BANDWIDTH, False)
         print('Calculating transform')
-        #cost, tr = alignment.align(BOUNDS, method='rough', method_args={ 'gridsize': SCALE / 4., 'steps': 8 })
-        cost, tr = alignment.align(BOUNDS, method='differential_evolution')
-        print(cost, tr)
+        cost, _ = alignment.fitAndPixelate((GRID.shape[0],1), SCALE, 5000, 1e-6)
+        hist = alignment.hist[:-1]
+        mean_size = np.mean(np.sort(hist)[::-1][:TOP_N_CLUSTERS])
+        size_thresh = mean_size * SIZE_THRESHOLD_MEANSHIFT
+        hist[hist < size_thresh] = 0
+        hist[hist >= size_thresh] = 1
 
         if DISPLAY_GRID:
             gridTran = alignment.gridTran
-            nn = np.unique(alignment.nn[1])
-            inv_nn = np.setdiff1d(np.arange(GRID.shape[0]), nn, True)
             plt.figure(figsize=(6,6))
             plt.title(f'Class {class_id} Aligned Template')
-            plt.plot(x,y,',')
-            plt.plot(centroids[:,0], centroids[:,1], 'r*')
-            plt.plot(gridTran[inv_nn,0], gridTran[inv_nn,1], 'k*')
-            plt.plot(gridTran[nn,0], gridTran[nn,1], '*', color='#00FF00')
+            plt.scatter(x,y,s=np.ones(x.size),alpha=0.3)
+            plt.scatter(gridTran[:,0], gridTran[:,1], c=hist)
             plt.show()

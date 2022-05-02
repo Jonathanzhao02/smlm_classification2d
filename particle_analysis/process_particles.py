@@ -3,11 +3,16 @@ from scipy.io import loadmat, savemat
 from pathlib import Path
 import matplotlib.pyplot as plt
 import numpy as np
+import importlib
+import json
+import sys
 
 from clustering import KMeansClusterIdentification, DBSCANClusterIdentification, MeanShiftClusterIdentification
-from align import GridAlignment
+from align import GridAlignment, LocalizationCluster
 
-VALID_CLUSTER_METHODS = ['kmeans', 'dbscan', 'meanshift']
+VALID_CLUSTER_METHODS = ['kmeans', 'dbscan', 'meanshift', 'mle']
+VALID_ALIGNMENT_METHODS = ['differential_evolution', 'shgo', 'dual_annealing', 'rough']
+VALID_TEMPLATE_NAMES = ['nsf', 'asu_2', 'asu_3']
 
 # General params
 DISPLAY_PARTICLE = False
@@ -16,85 +21,23 @@ DISPLAY_DISTANCES = False
 DISPLAY_OPTIMIZATION_LANDSCAPE = False
 DISPLAY_GRID = False
 
-# Template + Weights
-
-# TEMPLATE 1: 3x3 grid w/ 3 offset orientation markers
-SCALE = 0.18
-GRID = np.array([
-    [1.5, 1.5],
-    [1.5, 2.5],
-    [0.5, 2.5],
-    [-1, 1],
-    [0, 1],
-    [1, 1],
-    [-1, 0],
-    [0, 0],
-    [1, 0],
-    [-1, -1],
-    [0, -1],
-    [1, -1],
-], dtype=np.float64) * SCALE
-
-ORIENTATION_IDXES = np.array([0, 1, 2])
-GRID_WEIGHTS = np.ones(GRID.shape[0])
-GRID_WEIGHTS[ORIENTATION_IDXES] = 1.5
-BOUNDS = [[-SCALE * 3, SCALE * 3], [-SCALE * 3, SCALE * 3], [0.9, 1.1], [0.9, 1.1], [0, 2 * np.pi]]
-
-def true_read(tag):
-    c = tag[0]
-
-    # 14, 0
-    if c == 'N':
-        return [1,1,1,0, 0, 1, 1, 1, 0, 0, 0, 0]
-    # 19, 1
-    elif c == 'S':
-        return [1,1,1,0, 1, 0, 0, 1, 1, 0, 0, 1]
-    # 6, 2
-    elif c == 'F':
-        return [1,1,1,0, 0, 0, 1, 1, 0, 0, 1, 0]
-
-def read_match(read, tag):
-    return all(read[3:] == true_read(tag)[3:])
-
-# TEMPLATE 2: 6x8 grid
-# SCALE = 0.1
-# GRID = np.zeros((48,2), dtype=np.float64)
-
-# for i in range(6):
-#     for j in range(8):
-#         GRID[i * 8 + j] = [-3.5 + j, -2.5 + i]
-
-# GRID *= SCALE
-# ORIENTATION_IDXES = np.array([6, 7, 15, 32, 40, 41, 46, 47, 39])
-# GRID_WEIGHTS = np.ones(GRID.shape[0])
-# GRID_WEIGHTS[ORIENTATION_IDXES] = 0.2
-# BOUNDS = [[-SCALE * 3, SCALE * 3], [-SCALE * 3, SCALE * 3], [0.7, 0.9], [0.7, 0.9], [0, 2 * np.pi]]
-
-# KMeans params
-CLASS_SWEEP = list(range(3,13)) # for template 1
-
-# For template 1
-# CLASS_SWEEP = list(range(3,13))
-# KMEANS_THRESHOLD = 0.15 # threshold for inertia
-# SIZE_THRESHOLD = 0.5 # threshold for cluster size filtering
-
-# For template 2
-CLASS_SWEEP = list(range(9,49))
-KMEANS_THRESHOLD = 0.3
-SIZE_THRESHOLD = 0.5
-
-# MeanShift params
-# calculated through average x/y uncertainty across all localizations
-# BANDWIDTH = 0.0435 # for NSF
-# BANDWIDTH = 0.0238 # for 3-repetition ASU
-BANDWIDTH = 0.0323 # for 2-repetition ASU
-
 if __name__ == '__main__':
+    sys.path.append(str(Path(__file__).parent))
+
     import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument("input", help="Path to folder containing clusters.mat and subParticles.mat")
+    parser.add_argument("--output", "-o", help="Name of output file", default='final.mat')
+    parser.add_argument("--template", "-t", help="Origami template to use", default='nsf')
     parser.add_argument("--cluster", "-c", help="Clustering method to use", default='kmeans')
+    parser.add_argument("--alignment", "-a", help="Alignment optimization method to use", default='differential_evolution')
+    parser.add_argument("--config", "-j", help="Path to config.json file", default=str(Path(__file__).parent.joinpath("config.json")))
     args = parser.parse_args()
+
+    template = importlib.import_module(f".{args.template}", package="templates")
+
+    with Path(args.config).open() as f:
+        config = json.load(f)
 
     f = Path(args.input)
     clusters = loadmat(f.joinpath("clusters.mat"))['clusters'][0]
@@ -114,9 +57,16 @@ if __name__ == '__main__':
     ])
 
     cluster_method = args.cluster
+    alignment_method = args.alignment
 
     if cluster_method not in VALID_CLUSTER_METHODS:
         raise Exception("Invalid cluster method! Possible values are " + ", ".join(VALID_CLUSTER_METHODS))
+    
+    if alignment_method not in VALID_ALIGNMENT_METHODS:
+        raise Exception("Invalid alignment method! Possible values are " + ", ".join(VALID_ALIGNMENT_METHODS))
+    
+    if args.template not in VALID_TEMPLATE_NAMES:
+        raise Exception("Invalid template! Possible values are " + ", ".join(VALID_TEMPLATE_NAMES))
 
     n_particles = 0
     group_avgs = np.zeros(clusters.size)
@@ -136,6 +86,7 @@ if __name__ == '__main__':
             start = time()
 
             points = subParticles[group - 1]['points'][0][0]
+            sigma = subParticles[group - 1]['sigma'][0][0][:,0]
             x = points[:,0]
             y = points[:,1]
 
@@ -149,84 +100,109 @@ if __name__ == '__main__':
                 # xlim = plt.xlim()
                 # ylim = plt.ylim()
                 plt.show()
-
-            if cluster_method == 'kmeans':
-                cluster = KMeansClusterIdentification(points)
-                print('Optimizing number of KMeans clusters')
-                cluster.optimize_clusters(CLASS_SWEEP, KMEANS_THRESHOLD, display_inertia=DISPLAY_INERTIAS)
-                cluster.cluster(DISPLAY_FINAL_CLUSTER, SIZE_THRESHOLD, xlim=xlim, ylim=ylim)
-            elif cluster_method == 'dbscan':
-                cluster = DBSCANClusterIdentification(points)
-                cluster.cluster(DISPLAY_FINAL_CLUSTER, xlim=xlim, ylim=ylim)
-            elif cluster_method == 'meanshift':
-                print('Performing mean shift')
-                cluster = MeanShiftClusterIdentification(points)
-                cluster.cluster(DISPLAY_FINAL_CLUSTER, BANDWIDTH)
-
-            n_clusters = cluster.n_clusters
-            centroids = cluster.centroids
             
-            # Only for display purposes, can ignore
-            if DISPLAY_DISTANCES:
-                dist_matrix = np.zeros((n_clusters,n_clusters))
+            cargs = config['methods'][cluster_method][args.template]
 
-                for i in range(n_clusters - 1):
-                    for j in range(i+1, n_clusters):
-                        dist_matrix[i,j] = np.linalg.norm(centroids[i] - centroids[j], ord=2)
+            if cluster_method != 'mle':
+                if cluster_method == 'kmeans':
+                    cluster = KMeansClusterIdentification(points)
+                    print('Optimizing number of KMeans clusters')
+                    cluster.cluster(DISPLAY_FINAL_CLUSTER, **cargs, xlim=xlim, ylim=ylim)
+                elif cluster_method == 'dbscan':
+                    cluster = DBSCANClusterIdentification(points)
+                    cluster.cluster(DISPLAY_FINAL_CLUSTER, **cargs, xlim=xlim, ylim=ylim)
+                elif cluster_method == 'meanshift':
+                    print('Performing mean shift')
+                    cluster = MeanShiftClusterIdentification(points)
+                    cluster.cluster(DISPLAY_FINAL_CLUSTER, **cargs)
+
+                n_clusters = cluster.n_clusters
+                centroids = cluster.centroids
                 
-                plt.figure(figsize=(6,6))
-                plt.title(f'Class {class_id} Distances')
-                plt.plot(x,y,'.')
+                # Only for display purposes, can ignore
+                if DISPLAY_DISTANCES:
+                    dist_matrix = np.zeros((n_clusters,n_clusters))
 
-                for i in range(n_clusters):
-                    plt.plot(*centroids[i], 'r*')
+                    for i in range(n_clusters - 1):
+                        for j in range(i+1, n_clusters):
+                            dist_matrix[i,j] = np.linalg.norm(centroids[i] - centroids[j], ord=2)
+                    
+                    plt.figure(figsize=(6,6))
+                    plt.title(f'Class {class_id} Distances')
+                    plt.plot(x,y,'.')
+
+                    for i in range(n_clusters):
+                        plt.plot(*centroids[i], 'r*')
+                    
+                    dist_mean = np.mean(dist_matrix[dist_matrix > 0])
+                    
+                    for i in range(n_clusters - 1):
+                        for j in range(i+1, n_clusters):
+                            if dist_matrix[i,j] < dist_mean:
+                                plt.plot([centroids[i][0], centroids[j][0]], [centroids[i][1], centroids[j][1]], 'r--')
+                                mid = (centroids[i] + centroids[j]) / 2
+                                plt.text(*mid, str(dist_matrix[i,j])[:5], ha='center', va='center')
                 
-                dist_mean = np.mean(dist_matrix[dist_matrix > 0])
+                    # plt.xlim(xlim)
+                    # plt.ylim(ylim)
+                    plt.show()
                 
-                for i in range(n_clusters - 1):
-                    for j in range(i+1, n_clusters):
-                        if dist_matrix[i,j] < dist_mean:
-                            plt.plot([centroids[i][0], centroids[j][0]], [centroids[i][1], centroids[j][1]], 'r--')
-                            mid = (centroids[i] + centroids[j]) / 2
-                            plt.text(*mid, str(dist_matrix[i,j])[:5], ha='center', va='center')
-            
-                # plt.xlim(xlim)
-                # plt.ylim(ylim)
-                plt.show()
-            
-            alignment = GridAlignment(GRID, centroids, GRID_WEIGHTS, 1. / cluster.cluster_sizes, ORIENTATION_IDXES)
-            print('Calculating transform')
-            #cost, _ = alignment.align(BOUNDS, method='rough', method_args={ 'gridsize': SCALE / 4., 'steps': 8 })
-            cost, _ = alignment.align(BOUNDS, method='differential_evolution')
+                aargs = config['alignment_optimizers'][alignment_method]
+                alignment = GridAlignment(template.GRID, centroids, template.GRID_WEIGHTS, 1. / cluster.cluster_sizes, template.ORIENTATION_IDXES)
+                print('Calculating transform')
+                cost, tr = alignment.align(template.BOUNDS, method=alignment_method, method_args=aargs)
+                print(cost, tr)
 
-            if DISPLAY_OPTIMIZATION_LANDSCAPE:
-                alignment.plot_landscape(BOUNDS)
+                if DISPLAY_OPTIMIZATION_LANDSCAPE:
+                    alignment.plot_landscape(template.BOUNDS)
 
-            nn = np.unique(alignment.nn[1]) # read out binary
+                nn = np.unique(alignment.nn[1]) # read out binary
+                raw_read = np.zeros(template.GRID.shape[0])
+                raw_read[nn] = 1
 
-            # Only for display purposes, can ignore
-            if DISPLAY_GRID:
-                gridTran = alignment.gridTran
-                inv_nn = np.setdiff1d(np.arange(GRID.shape[0]), nn, True)
-                plt.figure(figsize=(6,6))
-                plt.title(f'Class {class_id} Aligned Template')
-                plt.plot(x,y,'.')
-                c_handle = plt.plot(centroids[:,0], centroids[:,1], 'k+', markersize=12, label='Centroids')[0]
-                g0_handle = plt.plot(gridTran[inv_nn,0], gridTran[inv_nn,1], 'k.', markersize=12, label='Template (0)')[0]
-                g1_handle = plt.plot(gridTran[nn,0], gridTran[nn,1], '.', markersize=12, color='#00FF00', label='Template (1)')[0]
-                # plt.xlim(xlim)
-                # plt.ylim(ylim)
-                plt.legend(handles=[c_handle, g0_handle, g1_handle])
-                plt.show()
+                end = time()
+
+                # Only for display purposes, can ignore
+                if DISPLAY_GRID:
+                    gridTran = alignment.gridTran
+                    inv_nn = np.setdiff1d(np.arange(GRID.shape[0]), nn, True)
+                    plt.figure(figsize=(6,6))
+                    plt.title(f'Class {class_id} Aligned Template')
+                    plt.plot(x,y,'.')
+                    c_handle = plt.plot(centroids[:,0], centroids[:,1], 'k+', markersize=12, label='Centroids')[0]
+                    g0_handle = plt.plot(gridTran[inv_nn,0], gridTran[inv_nn,1], 'k.', markersize=12, label='Template (0)')[0]
+                    g1_handle = plt.plot(gridTran[nn,0], gridTran[nn,1], '.', markersize=12, color='#00FF00', label='Template (1)')[0]
+                    # plt.xlim(xlim)
+                    # plt.ylim(ylim)
+                    plt.legend(handles=[c_handle, g0_handle, g1_handle])
+                    plt.show()
             
-            end = time()
+            else:
+                alignment = LocalizationCluster(template.GRID, np.array([x, y, sigma]).T, cargs['bandwidth'], False)
+                print('Calculating transform')
+                cost, _ = alignment.fitAndPixelate((template.GRID.shape[0],1), template.SCALE, 5000, 1e-6)
+                hist = alignment.hist[:-1]
+                mean_size = np.mean(np.sort(hist)[::-1][:cargs['top_n_clusters']])
+                size_thresh = mean_size * cargs['size_threshold']
+                hist[hist < size_thresh] = 0
+                hist[hist >= size_thresh] = 1
+                raw_read = hist.astype(int)
+
+                end = time()
+                
+                if DISPLAY_GRID:
+                    gridTran = alignment.gridTran
+                    plt.figure(figsize=(6,6))
+                    plt.title(f'Class {class_id} Aligned Template')
+                    plt.scatter(x,y,s=np.ones(x.size),alpha=0.3)
+                    plt.scatter(gridTran[:,0], gridTran[:,1], c=hist)
+                    plt.show()
+                
+                centroids = []
 
             # Record results
             global_avg += end - start
             group_avgs[class_id] += end - start
-
-            raw_read = np.zeros(GRID.shape[0])
-            raw_read[nn] = 1
 
             picks[group - 1] = np.array([(
                 points,
@@ -234,7 +210,7 @@ if __name__ == '__main__':
                 subParticles[group - 1]['group'][0][0][0],
                 class_id,
                 raw_read,
-                read_match(raw_read, subParticles[group - 1]['group'][0][0][0]),
+                template.read_match(raw_read, subParticles[group - 1]['group'][0][0][0]),
                 centroids,
                 alignment.gridTran,
                 cost,
@@ -249,4 +225,4 @@ if __name__ == '__main__':
     print(global_avg)
 
     # Save all read results
-    savemat(str(f.joinpath('final_imp.mat')), { 'picks': picks })
+    savemat(str(f.joinpath(args.output)), { 'picks': picks })
