@@ -106,7 +106,6 @@ if __name__ == '__main__':
             if cluster_method != 'mle':
                 if cluster_method == 'kmeans':
                     cluster = KMeansClusterIdentification(points)
-                    print('Optimizing number of KMeans clusters')
                     cluster.cluster(DISPLAY_FINAL_CLUSTER, **cargs, xlim=xlim, ylim=ylim)
                 elif cluster_method == 'dbscan':
                     cluster = DBSCANClusterIdentification(points)

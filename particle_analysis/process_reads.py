@@ -245,10 +245,11 @@ if __name__ == '__main__':
         plt.close()
 
 # TODO:
+# -2. clean up process_superparticles
+# -1. add config to MATLAB side
 # 3. 2 and 3 repetition again w/ labeled
 # inf. show bima + ritvik process
 
-# -1. add config file
 # 0. bit errors location-wise or #
 # 1. binding-site-wise distance map
 # 2. run MLE on NSF + meanshift
