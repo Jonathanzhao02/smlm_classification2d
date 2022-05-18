@@ -10,7 +10,7 @@ if __name__ == '__main__':
     parser.add_argument("file", help="Input hdf5 file to convert")
     parser.add_argument("--out", "-o", help="Name of output folder", default="")
     parser.add_argument("--tag", "-t", help="Tag string to add before group number", default="")
-    parser.add_argument("--picks", "-p", help="Number of picks to draw from each file", type=int, default=0)
+    parser.add_argument("--picks", "-p", help="Number of picks to draw from the file", type=int, default=0)
     args = parser.parse_args()
     
     n_picks = args.picks
@@ -40,7 +40,7 @@ if __name__ == '__main__':
     picks = picks[picks != None]
 
     out = Path(__file__).parent.joinpath(Path('../data').joinpath(args.out or Path(f.with_suffix('').name)))
-    out.mkdir(exist_ok=True)
+    out.mkdir(exist_ok=True, parents=True)
 
     savemat(str(out.joinpath(Path('subParticles.mat'))), { 'subParticles': picks })
 

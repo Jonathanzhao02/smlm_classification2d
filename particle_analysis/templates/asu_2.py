@@ -64,13 +64,13 @@ def true_read(tag):
 
     # 1, 1
     if c == 'A':
-        return inv_apply_repetition([0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1])
+        return inv_apply_repetition([1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0])
     # 19, 2
     elif c == 'S':
-        return inv_apply_repetition([0, 1, 0, 0, 1, 1, 0, 0, 0, 0, 1, 0])
+        return inv_apply_repetition([1, 1, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0])
     # 21, 3
     elif c == 'U':
-        return inv_apply_repetition([0, 1, 0, 1, 0, 1, 0, 0, 0, 0, 1, 1])
+        return inv_apply_repetition([1, 0, 1, 0, 1, 0, 1, 1, 0, 0, 0, 0])
 
 def readout(bstring):
     bstring = apply_repetition(bstring)

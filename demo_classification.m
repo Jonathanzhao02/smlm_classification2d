@@ -34,7 +34,8 @@ addpath(genpath('matlab_functions'))
 
 %% LOAD DATASET
 % -- select data set ---
-dataset = 'ASU_2red_300';
+dataset = 'ASU_2red_622_labeled';
+% dataset = 'ASU_2red_300';
 % dataset = 'ASU_3red_300';
 % dataset = 'NSF_335';
 % dataset = '200x_simulated_TUD_flame';           %100 with flame, 100 without flame (80% DoL)
@@ -45,7 +46,7 @@ dataset = 'ASU_2red_300';
 % N = 200;     %length(subparticles)
 
 % -- set number of classes --
-K = 20;          %set to 2 for the simulated TUD_flame dataset, this will give the correct classes
+K = 12;          %set to 2 for the simulated TUD_flame dataset, this will give the correct classes
                     %set to 4 for the other two datasets, and continue with STEP 5 using C=2        
 
 % -- choose number of final classes (C<K) --

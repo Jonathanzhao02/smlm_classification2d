@@ -9,6 +9,7 @@ addpath(genpath('matlab_functions'))
 
 %% LOAD DATASET
 % -- select data set ---
+% dataset = 'ASU_2red_30_labeled';
 % dataset = 'ASU_2red_300';
 % dataset = 'ASU_3red_300';
 dataset = 'NSF_335';
@@ -17,8 +18,7 @@ dataset = 'NSF_335';
 % dataset = '456_experimental_TUD_mirror';     %experimental dataset of which a few (~2%) are mirrored
 
 % -- set max number of classes --
-K = 30;          %set to 2 for the simulated TUD_flame dataset, this will give the correct classes
-                    %set to 4 for the other two datasets, and continue with STEP 5 using C=2        
+K = 30;
 
 load(['data/' dataset '/subParticles.mat'])
 N = length(subParticles);

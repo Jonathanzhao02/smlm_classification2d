@@ -7,7 +7,7 @@ import importlib
 import sys
 
 # General params
-DISPLAY_HISTOGRAM = True
+DISPLAY_HISTOGRAM = False
 DISPLAY_TEMPLATES = False
 DISPLAY_BIT_ERRORS = False
 
@@ -124,7 +124,7 @@ if __name__ == '__main__':
             for j,n_idx in enumerate(nn):
                 distance_errors[g_bin][n_idx] += dist[j]
 
-        if target:
+        if target is not None:
             bin_counts[g_bin] += read
 
             bit_errs = np.logical_xor(read, target)
@@ -245,15 +245,9 @@ if __name__ == '__main__':
         plt.close()
 
 # TODO:
-# -2. clean up process_superparticles
-# -1. add config to MATLAB side
-# 3. 2 and 3 repetition again w/ labeled
-# inf. show bima + ritvik process
-
-# 0. bit errors location-wise or #
-# 1. binding-site-wise distance map
-# 2. run MLE on NSF + meanshift
-# 4. elbow on KMeans on MDS (NSF)
-# 5. run MLE/meanshift/K-means over superparticles
+# 1. Debug 2-redundancy
+# 2. Save transform
+# 3. Fix distances (tbd)
+# 4. Generate figures
 
 # crytographic hash function

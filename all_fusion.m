@@ -9,7 +9,8 @@ addpath(genpath('matlab_functions'))
 
 %% LOAD DATASET
 % -- select data set ---
-dataset = 'ASU_2red_300';
+dataset = 'ASU_2red_30_labeled';
+% dataset = 'ASU_2red_300';
 % dataset = 'ASU_3red_300';
 % dataset = 'NSF_335';
 % dataset = '200x_simulated_TUD_flame';           %100 with flame, 100 without flame (80% DoL)

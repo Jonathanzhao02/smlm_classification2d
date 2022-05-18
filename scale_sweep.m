@@ -11,14 +11,14 @@ dataset = 'NSF_335';
 % dataset = '200x_simulated_TUD_mirror';          %10 mirrored, 190 normal (80% DoL)
 % dataset = '456_experimental_TUD_mirror';     %experimental dataset of which a few (~2%) are mirrored
 
+nAngles = 12;
+scales = linspace(0.001,0.5,60); %dependent on whether localisations are in pixel/nm units
+
 load(['data/' dataset '/subParticles.mat'])
 N = length(subParticles);
 
 %% Scale sweep
 clear val
-
-nAngles = 12;
-scales = linspace(0.001,0.5,60); %dependent on whether localisations are in pixel/nm units
 
 for t = 1:20
     order = randperm(N);  %shuffle all particles

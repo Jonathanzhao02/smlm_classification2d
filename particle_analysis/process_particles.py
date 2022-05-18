@@ -164,7 +164,7 @@ if __name__ == '__main__':
                 # Only for display purposes, can ignore
                 if DISPLAY_GRID:
                     gridTran = alignment.gridTran
-                    inv_nn = np.setdiff1d(np.arange(GRID.shape[0]), nn, True)
+                    inv_nn = np.setdiff1d(np.arange(template.GRID.shape[0]), nn, True)
                     plt.figure(figsize=(6,6))
                     plt.title(f'Class {class_id} Aligned Template')
                     plt.plot(x,y,'.')

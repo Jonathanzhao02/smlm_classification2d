@@ -1,10 +1,10 @@
-% Note: only NSF dataset has individual tags
-dataset = 'NSF_335';
+dataset = 'ASU_2red_30_labeled';
+% dataset = 'NSF_335';
 % dataset = 'ASU_2red_300';
 % dataset = 'ASU_3red_300';
-K = 4;
-tags = ['N' 'S' 'F'];
-% tags = ['A', 'S', 'U'];
+K = 3;
+% tags = ['N' 'S' 'F'];
+tags = ['A', 'S', 'U'];
 
 outdir = ['output/' dataset];
 load([outdir '/clusters.mat'])
