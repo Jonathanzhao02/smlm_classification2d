@@ -24,6 +24,8 @@ GRID_WEIGHTS = np.ones(GRID.shape[0])
 GRID_WEIGHTS[ORIENTATION_IDXES] = 1.5
 BOUNDS = [[-SCALE * 3, SCALE * 3], [-SCALE * 3, SCALE * 3], [0.9, 1.1], [0.9, 1.1], [0, 2 * np.pi]]
 
+MAX_VAL = 1 << 12
+
 # Used to convert read binary into actual index / letter pairing
 LETTER_VALUES = np.array(
     [0, 0, 0, 32, 16, 8, 4, 2, 1, 0, 0, 0]
@@ -32,8 +34,6 @@ LETTER_VALUES = np.array(
 IDX_VALUES = np.array(
     [0, 0, 0, 0, 0, 0, 0, 0, 0, 4, 2, 1]
 )
-
-REPETITION_PAIRS = np.array([0, 1, 2, 3, 4, 5, 6, 7, 8])
 
 def readout(bstring):
     return (np.sum(bstring * LETTER_VALUES) << 3) + np.sum(bstring * IDX_VALUES)
@@ -61,3 +61,9 @@ def read_match(read, tag):
 
 def binnify(group):
     return group[0]
+
+CORRECT_READS = [
+    ['N',readout(true_read('N'))],
+    ['S',readout(true_read('S'))],
+    ['F',readout(true_read('F'))],
+]

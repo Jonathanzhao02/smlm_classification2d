@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import importlib
 import sys
+import csv
 
 # General params
 DISPLAY_HISTOGRAM = False
@@ -83,12 +84,7 @@ if __name__ == '__main__':
     group_counts = np.zeros((n_clusters, template.GRID.shape[0]), dtype=int)
 
     # Tracks what readouts there are
-    readouts = np.empty(n_clusters, dtype='O')
-    for i in range(n_clusters):
-        readouts[i] = np.zeros(clusters_sizes[i], dtype=int)
-    
-    # Tracks index of clusters while inserting readouts
-    inds = np.zeros(n_clusters, dtype=int)
+    readouts = np.zeros(n_picks, dtype=int)
 
     # Bit-error specific tracking
     distance_errors = {}
@@ -134,33 +130,76 @@ if __name__ == '__main__':
             bit_fp_errors[g_bin] += bit_fp_errs
             bit_fn_errors[g_bin] += bit_fn_errs
                 
-        readouts[cluster][inds[cluster]] = template.readout(read)
-        inds[cluster] += 1
+        readouts[i] = template.readout(read)
     
     for key,val in distance_errors.items():
         distance_errors[key] = np.divide(val, bin_counts[g_bin])
     
     # Display histogram of overall and individual cluster reads
-    if DISPLAY_HISTOGRAM:
-        for i in range(n_clusters):
-            plt.title(f"Class {i}")
-            [n, bins, _] = plt.hist(readouts[i], bins=range(1 << template.REPETITION_PAIRS.shape[0]))
-            plt.ylim(top=clusters_sizes[i])
-            plt.show()
+    for i in range(n_clusters):
+        plt.title(f"Class {i}")
+        [n, bins, _] = plt.hist(readouts[clusters == i], bins=range(template.MAX_VAL))
+        plt.ylim(top=clusters_sizes[i])
 
-            top_n = bins[np.argsort(n)[::-1][:n_clusters]].astype(int)
-            print(np.sort(n)[::-1][:n_clusters])
-            print(list(map(template.to_string, top_n)))
-        
-        all_readouts = np.concatenate(readouts)
-        plt.title("Overall")
-        [n, bins, _] = plt.hist(all_readouts, bins=range(1 << template.REPETITION_PAIRS.shape[0]))
-        plt.ylim(top=n_picks)
-        plt.show()
+        if DISPLAY_HISTOGRAM:
+            plt.show()
+        else:
+            plt.close()
 
         top_n = bins[np.argsort(n)[::-1][:n_clusters]].astype(int)
         print(np.sort(n)[::-1][:n_clusters])
         print(list(map(template.to_string, top_n)))
+    
+    plt.title("Overall")
+    [n, bins, _] = plt.hist(readouts, bins=range(template.MAX_VAL))
+    plt.ylim(top=n_picks)
+
+    if DISPLAY_HISTOGRAM:
+        plt.show()
+    else:
+        plt.close()
+
+    top_n = bins[np.argsort(n)[::-1][:n_clusters]].astype(int)
+    print(np.sort(n)[::-1][:n_clusters])
+    print(list(map(template.to_string, top_n)))
+
+    field_names = ['Readout', 'ReadoutString', 'Count']
+    
+    out_path = out_f.joinpath('hists')
+    out_path.mkdir(exist_ok=True)
+
+    with out_path.joinpath('overall.csv').open('w') as f:
+        overall_hist = []
+
+        for i in range(template.MAX_VAL):
+            overall_hist.append({'Readout': i, 'ReadoutString': template.to_string(i), 'Count': 0})
+        
+        for i in range(len(readouts)):
+            readout = readouts[i]
+            overall_hist[readout]['Count'] += 1
+        
+        writer = csv.DictWriter(f, fieldnames=field_names)
+        writer.writeheader()
+        writer.writerows(overall_hist)
+    
+    for i in range(len(template.CORRECT_READS)):
+        readout_string = template.CORRECT_READS[i][0]
+        readout = template.CORRECT_READS[i][1]
+
+        with out_path.joinpath(f'{readout_string}.csv').open('w') as f:
+            filt_readouts = readouts[list(map(lambda x: x.decode().startswith(readout_string), groups))]
+            overall_hist = []
+
+            for i in range(template.MAX_VAL):
+                overall_hist.append({'Readout': i, 'ReadoutString': template.to_string(i), 'Count': 0})
+            
+            for i in range(len(filt_readouts)):
+                readout = filt_readouts[i]
+                overall_hist[readout]['Count'] += 1
+            
+            writer = csv.DictWriter(f, fieldnames=field_names)
+            writer.writeheader()
+            writer.writerows(overall_hist)
 
     # Create visual representation of counts at each template position
     if DISPLAY_TEMPLATES:
@@ -179,34 +218,38 @@ if __name__ == '__main__':
 
             plt.show()
     
-    if DISPLAY_BIT_ERRORS:
-        for key in distance_errors.keys():
-            plt.figure(figsize=(8,8))
+    for key in distance_errors.keys():
+        plt.figure(figsize=(8,8))
 
-            ax1 = plt.subplot(2, 2, 1)
-            ax2 = plt.subplot(2, 2, 2)
-            ax3 = plt.subplot(2, 2, 3)
+        ax1 = plt.subplot(2, 2, 1)
+        ax2 = plt.subplot(2, 2, 2)
+        ax3 = plt.subplot(2, 2, 3)
 
-            ax1.set_title(f"Class {key} False Negatives")
-            ax2.set_title(f"Class {key} False Positives")
-            ax3.set_title(f"Class {key} Distances")
-            
-            for i,point in enumerate(template.GRID):
-                ax1.text(*point, str(bit_fn_errors[key][i]), ha='center', va='center')
-                ax2.text(*point, str(bit_fp_errors[key][i]), ha='center', va='center')
-                ax3.text(*point, f'{distance_errors[key][i]:.2e}', ha='center', va='center')
-            
-            x = template.GRID[:,0]
-            y = template.GRID[:,1]
+        ax1.set_title(f"Class {key} False Negatives")
+        ax2.set_title(f"Class {key} False Positives")
+        ax3.set_title(f"Class {key} Distances")
+        
+        for i,point in enumerate(template.GRID):
+            ax1.text(*point, str(bit_fn_errors[key][i]), ha='center', va='center')
+            ax2.text(*point, str(bit_fp_errors[key][i]), ha='center', va='center')
+            ax3.text(*point, f'{distance_errors[key][i]:.2e}', ha='center', va='center')
+        
+        x = template.GRID[:,0]
+        y = template.GRID[:,1]
 
-            ax1.set_xlim(x.min() * 1.5,x.max() * 1.5)
-            ax1.set_ylim(y.min() * 1.5,y.max() * 1.5)
-            ax2.set_xlim(x.min() * 1.5,x.max() * 1.5)
-            ax2.set_ylim(y.min() * 1.5,y.max() * 1.5)
-            ax3.set_xlim(x.min() * 1.5,x.max() * 1.5)
-            ax3.set_ylim(y.min() * 1.5,y.max() * 1.5)
+        ax1.set_xlim(x.min() * 1.5,x.max() * 1.5)
+        ax1.set_ylim(y.min() * 1.5,y.max() * 1.5)
+        ax2.set_xlim(x.min() * 1.5,x.max() * 1.5)
+        ax2.set_ylim(y.min() * 1.5,y.max() * 1.5)
+        ax3.set_xlim(x.min() * 1.5,x.max() * 1.5)
+        ax3.set_ylim(y.min() * 1.5,y.max() * 1.5)
 
+        plt.savefig(out_f.joinpath('bit_errs.png'))
+
+        if DISPLAY_BIT_ERRORS:
             plt.show()
+        else:
+            plt.close()
     
     print(f"Correctly read {correct_reads.sum()} / {n_picks} picks, {correct_reads.sum() / n_picks * 100:.2f}%")
 
@@ -245,9 +288,6 @@ if __name__ == '__main__':
         plt.close()
 
 # TODO:
-# 1. Debug 2-redundancy
-# 2. Save transform
-# 3. Fix distances (tbd)
-# 4. Generate figures
+# Generate figures
 
 # crytographic hash function

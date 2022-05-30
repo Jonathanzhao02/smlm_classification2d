@@ -54,6 +54,7 @@ if __name__ == '__main__':
         ('centroids', 'O'),
         ('grid', 'O'),
         ('cost', 'f8'),
+        ('transform', 'O'),
     ])
 
     cluster_method = args.cluster
@@ -151,6 +152,7 @@ if __name__ == '__main__':
                 print('Calculating transform')
                 cost, tr = alignment.align(template.BOUNDS, method=alignment_method, method_args=aargs)
                 print(cost, tr)
+                transform = tr
 
                 if DISPLAY_OPTIMIZATION_LANDSCAPE:
                     alignment.plot_landscape(template.BOUNDS)
@@ -198,6 +200,7 @@ if __name__ == '__main__':
                     plt.show()
                 
                 centroids = []
+                transform = [alignment.dx, alignment.dy, 1.0, 1.0, alignment.dt]
 
             # Record results
             global_avg += end - start
@@ -213,6 +216,7 @@ if __name__ == '__main__':
                 centroids,
                 alignment.gridTran,
                 cost,
+                np.array(transform),
             )], dtype=datatype)
         
         group_avgs[class_id] /= group_n_particles
@@ -224,4 +228,4 @@ if __name__ == '__main__':
     print(global_avg)
 
     # Save all read results
-    savemat(str(f.joinpath(args.output)), { 'picks': picks })
+    savemat(str(f.joinpath(args.output)), { 'picks': picks, 'config': config, 'args': vars(args) })

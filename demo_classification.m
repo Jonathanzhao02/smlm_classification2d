@@ -34,7 +34,8 @@ addpath(genpath('matlab_functions'))
 
 %% LOAD DATASET
 % -- select data set ---
-dataset = 'ASU_2red_622_labeled';
+dataset = 'ASU_3red_620_labeled';
+% dataset = 'ASU_2red_622_labeled';
 % dataset = 'ASU_2red_300';
 % dataset = 'ASU_3red_300';
 % dataset = 'NSF_335';

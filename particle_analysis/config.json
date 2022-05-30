@@ -16,7 +16,7 @@
         },
         "rough": {
             "init": {
-                "gridsize": 0.02,
+                "gridsize": 0.045,
                 "steps": 8
             },
             "final": {
