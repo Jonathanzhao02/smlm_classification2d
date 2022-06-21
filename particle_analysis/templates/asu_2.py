@@ -9,16 +9,25 @@ GRID = np.zeros((48,2), dtype=np.float64)
 # 8  9  10 11 12 13 14 15
 # 16 17 18 19 20 21 22 23
 # 24 25 26 27 28 29 30 31
-# 32 33 34 35 36 37 38 39
-# 40 41 42 43 44 45 46 47
+# 32 33 34 35 36 37 38 -
+# 39 40 41 42 43 44 -  -
 # Keep in mind origami is FLIPPED VERTICALLY from image -> matplotlib
+
+removed = np.array([39, 46, 47])
 
 for i in range(6):
     for j in range(8):
+        if i * 8 + j in removed:
+            continue
+
         GRID[i * 8 + j] = [-3.5 + j, 2.5 - i]
 
+idx = np.ones(48, dtype=bool)
+idx[removed] = False
+GRID = GRID[idx]
+
 GRID *= SCALE
-ORIENTATION_IDXES = np.array([0, 1, 8, 6, 7, 15, 32, 40, 41])
+ORIENTATION_IDXES = np.array([0, 1, 8, 6, 7, 15, 32, 39, 40])
 INV_ORIENTATION_IDXES = np.setdiff1d(np.arange(GRID.shape[0]), ORIENTATION_IDXES)
 GRID_WEIGHTS = np.ones(GRID.shape[0])
 GRID_WEIGHTS[ORIENTATION_IDXES] = 1.5

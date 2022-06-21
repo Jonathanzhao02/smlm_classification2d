@@ -12,17 +12,39 @@ DISPLAY_HISTOGRAM = False
 DISPLAY_TEMPLATES = False
 DISPLAY_BIT_ERRORS = False
 
-if __name__ == '__main__':
-    sys.path.append(str(Path(__file__).parent))
+def save_images(raw_reads, groups, points, centroids, costs, clusters, grids, indices, out_f, template):
+    # Saves images of particles
+    raw_reads_mis = raw_reads[indices]
+    groups_mis = groups[indices]
+    points_mis = points[indices]
+    centroids_mis = centroids[indices]
+    costs_mis = costs[indices]
+    clusters_mis = clusters[indices]
+    grids_mis = grids[indices]
+    n_picks_mis = indices.sum()
 
-    import argparse
-    parser = argparse.ArgumentParser()
-    parser.add_argument("input", help="Path to folder containing readout results")
-    parser.add_argument("--infile", "-i", help="Name of readout results file", default='final.mat')
-    parser.add_argument("--output", "-o", help="Name of output folder", default="final")
-    parser.add_argument("--template", "-t", help="Origami template to use", default='nsf')
-    args = parser.parse_args()
+    for i in range(n_picks_mis):
+        pick_group = bytes.decode(groups_mis[i])
+        pick_points = points_mis[i]
+        pick_centroids = centroids_mis[i]
+        pick_grid = grids_mis[i]
+        pick_read = raw_reads_mis[i].astype(bool)
+        pick_cost = costs_mis[i]
 
+        pick_val = template.readout(pick_read)
+
+        inv_read = np.logical_not(pick_read)
+        plt.figure(figsize=(6,6))
+        plt.title(f'Pick {pick_group} Aligned Template, Read {template.to_string(pick_val)}, Cost {pick_cost:.3e}')
+        plt.plot(pick_points[:,0],pick_points[:,1],',')
+        if pick_centroids.size > 0:
+            plt.plot(pick_centroids[:,0], pick_centroids[:,1], 'r*')
+        plt.plot(pick_grid[inv_read,0], pick_grid[inv_read,1], 'k*')
+        plt.plot(pick_grid[pick_read,0], pick_grid[pick_read,1], '*', color='#00FF00')
+        plt.savefig(out_f.joinpath(f"{pick_group}.png"))
+        plt.close()
+
+def process_reads(args):
     template = importlib.import_module(f".{args.template}", package="templates")
 
     f = Path(args.input)
@@ -159,8 +181,8 @@ if __name__ == '__main__':
     else:
         plt.close()
 
-    top_n = bins[np.argsort(n)[::-1][:n_clusters]].astype(int)
-    print(np.sort(n)[::-1][:n_clusters])
+    top_n = bins[np.argsort(n)[::-1][:20]].astype(int)
+    print(np.sort(n)[::-1][:20])
     print(list(map(template.to_string, top_n)))
 
     field_names = ['Readout', 'ReadoutString', 'Count']
@@ -244,7 +266,7 @@ if __name__ == '__main__':
         ax3.set_xlim(x.min() * 1.5,x.max() * 1.5)
         ax3.set_ylim(y.min() * 1.5,y.max() * 1.5)
 
-        plt.savefig(out_f.joinpath('bit_errs.png'))
+        plt.savefig(out_f.joinpath(f'bit_errs_{key}.png'))
 
         if DISPLAY_BIT_ERRORS:
             plt.show()
@@ -256,38 +278,22 @@ if __name__ == '__main__':
     # Saves images of misclassified particles
     out_path = out_f.joinpath('misclassifications')
     out_path.mkdir(exist_ok=True)
-    incorrect_reads = np.logical_not(correct_reads)
-    raw_reads_mis = raw_reads[incorrect_reads]
-    groups_mis = groups[incorrect_reads]
-    points_mis = points[incorrect_reads]
-    centroids_mis = centroids[incorrect_reads]
-    costs_mis = costs[incorrect_reads]
-    clusters_mis = clusters[incorrect_reads]
-    grids_mis = grids[incorrect_reads]
-    n_picks_mis = incorrect_reads.sum()
+    save_images(raw_reads, groups, points, centroids, costs, clusters, grids, np.logical_not(correct_reads), out_path, template)
 
-    for i in range(n_picks_mis):
-        pick_group = bytes.decode(groups_mis[i])
-        pick_points = points_mis[i]
-        pick_centroids = centroids_mis[i]
-        pick_grid = grids_mis[i]
-        pick_read = raw_reads_mis[i].astype(bool)
-        pick_cost = costs_mis[i]
+    # Saves images of correctly classified particles
+    out_path = out_f.joinpath('correct_classifications')
+    out_path.mkdir(exist_ok=True)
+    save_images(raw_reads, groups, points, centroids, costs, clusters, grids, correct_reads, out_path, template)
 
-        pick_val = template.readout(pick_read)
+if __name__ == '__main__':
+    sys.path.append(str(Path(__file__).parent))
 
-        inv_read = np.logical_not(pick_read)
-        plt.figure(figsize=(6,6))
-        plt.title(f'Pick {pick_group} Aligned Template, Read {template.to_string(pick_val)}, Cost {pick_cost:.3e}')
-        plt.plot(pick_points[:,0],pick_points[:,1],',')
-        if pick_centroids.size > 0:
-            plt.plot(pick_centroids[:,0], pick_centroids[:,1], 'r*')
-        plt.plot(pick_grid[inv_read,0], pick_grid[inv_read,1], 'k*')
-        plt.plot(pick_grid[pick_read,0], pick_grid[pick_read,1], '*', color='#00FF00')
-        plt.savefig(out_path.joinpath(f"{pick_group}.png"))
-        plt.close()
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument("input", help="Path to folder containing readout results")
+    parser.add_argument("--infile", "-i", help="Name of readout results file", default='final.mat')
+    parser.add_argument("--output", "-o", help="Name of output folder", default="final")
+    parser.add_argument("--template", "-t", help="Origami template to use", default='nsf')
+    args = parser.parse_args()
 
-# TODO:
-# Generate figures
-
-# crytographic hash function
+    process_reads(args)

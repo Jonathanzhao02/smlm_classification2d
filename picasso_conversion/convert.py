@@ -28,11 +28,14 @@ if __name__ == '__main__':
 
     if n_picks > 0:
         groups = np.random.choice(groups, min(n_picks, groups.size), False)
+    
+    rejected = 0
 
     for i in tqdm(groups):
         idx = locs['group'] == i
 
         if np.mean(sigma[idx]) > 1:
+            rejected += 1
             continue
 
         picks[i] = np.array([(points[idx] - np.mean(points[idx], axis=0), sigma[idx].reshape((-1, 1)), f'{args.tag}{i}')], dtype=datatype)
@@ -43,6 +46,7 @@ if __name__ == '__main__':
     out.mkdir(exist_ok=True, parents=True)
 
     savemat(str(out.joinpath(Path('subParticles.mat'))), { 'subParticles': picks })
+    print(f"Rejected {rejected}")
 
     # HDF5 NOTES:
     # contains 'locs', which is a Dataset object

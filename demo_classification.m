@@ -24,204 +24,208 @@
 %
 % Teun Huijben, 2020
 %%  
-close all
-clear all
-clc
+for dset={'A_2red_211_labeled','A_3red_206_labeled','S_2red_206_labeled','S_3red_210_labeled','U_2red_206_labeled','U_3red_207_labeled'}
+    close all
+    clearvars -except dset
+    clc
 
-% add the required directory to path
-addpath(genpath('datafusion2d'))
-addpath(genpath('matlab_functions'))
-
-%% LOAD DATASET
-% -- select data set ---
-dataset = 'ASU_3red_620_labeled';
-% dataset = 'ASU_2red_622_labeled';
-% dataset = 'ASU_2red_300';
-% dataset = 'ASU_3red_300';
-% dataset = 'NSF_335';
-% dataset = '200x_simulated_TUD_flame';           %100 with flame, 100 without flame (80% DoL)
-% dataset = '200x_simulated_TUD_mirror';          %10 mirrored, 190 normal (80% DoL)
-% dataset = '456_experimental_TUD_mirror';     %experimental dataset of which a few (~2%) are mirrored
-
-% -- choose number of particles --
-% N = 200;     %length(subparticles)
-
-% -- set number of classes --
-K = 12;          %set to 2 for the simulated TUD_flame dataset, this will give the correct classes
-                    %set to 4 for the other two datasets, and continue with STEP 5 using C=2        
-
-% -- choose number of final classes (C<K) --
-C = 3; 
-
-% -- set width of visualization --
-width = 1.0;
-furtherClustering = false;
-scale = 0.03;
-nAngles = 12;
-
-load(['data/' dataset '/subParticles.mat'])
-N = length(subParticles);
-
-outdir = ['output/' dataset];
-if ~exist(outdir,'dir')
-    mkdir(outdir);
-else
-    disp('Warning: outdir already exists')
-end    
-
-save([outdir '/subParticles'], 'subParticles');
-
-%% STEP 1: all2all registration
-disp("Starting all2all registration!");
-
-% perform all2all registration and save results on disk (can take long for many particles)
-                % 0.01 for experimental TUD (in camera pixel units)
-                % 0.03 for simulated TUD
-                % 0.1 for NPC
-                % 0.03 or Digits data
-                % 0.15 for Letters data                
-                % Look at Online Methods for the description
-
-tstart = tic;
-
-%all2all registration
-all2all(subParticles, [outdir '/all2all_matrix'], scale, nAngles);           
-
-toc(tstart)
-
-%optional fusion of all particles (not necessary for classification)
-
-%disp("Starting optional fusion!");
-
-%[initAlignedParticles, M1] = outlier_removal(subParticles, [outdir '/all2all_matrix/'], outdir);        %Lie-algebraic averaging
-%iters = 3;                                                                                                                                         %number of bootstrap iteration
-%[superParticle, ~] = one2all(initAlignedParticles, iters, M1, outdir,scale, nAngles);                                      %bootstrapping
-
-%disp("Finished optional fusion!");
-
-disp("Finished all2all registration!");
-
-%% STEP 2: Multi-dimensional scaling
-disp("Starting multi-dimensional scaling!");
-
-% load the similarity matrix and normalize with respect to number of localizations;
-
-disp("Loading similarity matrix!");
-
-[SimMatrix, SimMatrixNorm] = MakeMatrix(outdir,subParticles,N);  
-
-% dissimilarity matrix
-disp("Calculating full similarity matrix!");
-
-D = SimMatrixNorm+SimMatrixNorm';                   % convert upper-triangular matrix to full similarity matrix
-D = max(D(:))-D;                                                     % convert to dissimilarity
-D = D - diag(diag(D));                                             % set diagonal to 0
-save([outdir '/similarity_matrix'], 'D');
-
-disp("Performing MDS!");
-
-tstart = tic;
-
-try
-    mds = mdscale(D,30,'Criterion','metricstress');     % perform multi-dimensional scaling
-catch E
-    disp('Ran into error');
-    disp(E);
-    quit
-end
-
-toc(tstart)
-
-disp("Saving figure!");
-
-% show first three dimensions of MDS 
-f = figure('visible', 'off'); scatter3(mds(:,1),mds(:,2),mds(:,3),'o','filled'), title 'Multidimensional Scaling'
-saveas(f, [outdir '/MDS_3D.fig'], 'fig')
-close(f)
-
-disp("Finished multi-dimensional scaling!");
-
-%% STEP3: k-means clustering
-disp("Starting k-means clustering!");
-
-tstart = tic;
-
-clus = kmeans(mds,K,'replicates',1000);
-[clus, K] = recluster(clus,K,mds);
-
-toc(tstart)
-
-clear clusters
-for i = 1:K
-    clusters{i} = find(clus==i);
-end
-
-save([outdir '/clusters'], 'clusters');
-
-disp("Saving figure!");
-
-f = figure('visible', 'off'); scatter3(mds(:,1),mds(:,2),mds(:,3),[],clus,'o','filled'), title 'Clustering result'
-saveas(f, [outdir '/MDS_3D_clustered.fig'], 'fig')
-close(f)
-
-disp("Finished k-means clustering!");
-
-%% STEP 4: Reconstruction per cluster
-disp("Starting reconstruction per cluster!");
-
-iters = 2;      %number of bootstraps
-
-tstart = tic;
-
-[~,classes] = reconstructPerClassFunction(subParticles,clusters,outdir,scale,iters,nAngles);
-
-toc(tstart)
-
-save([outdir '/classes'], 'classes');
-
-%% Visualize results
-close all
-
-%random particle
-ran = randi(N);
-f = figure('visible', 'off');
-visualizeCloud2D(subParticles{ran}.points,200,width,0,'example particle',f);
-saveas(f, [outdir '/rand_particle.fig'], 'fig')
-close(f)
-
-%fusion of all particles without classification
-% visualizeCloud2D(superParticle{end},200,width,0,'superParticle');
-
-% reconstructed clusters
-for i = 1:length(classes)
-    str = ['class ' num2str(i) ' (' num2str(length(clusters{i})) ' particles)' ];
-    f = figure('visible', 'off');
-    visualizeCloud2D(classes{i}{end},200,width,0,str,f);
-    saveas(f, [outdir '/class_' num2str(i) '.fig'], 'fig')
-    close(f)
-end
-
-disp("Finished reconstruction per cluster!");
-
-%% (optional) STEP 5: further clustering - Eigen image method (C<K)
-if furtherClustering
-    disp("Starting further clustering!");
-
+    dataset = dset{1};
+    
+    % add the required directory to path
+    addpath(genpath('datafusion2d'))
+    addpath(genpath('matlab_functions'))
+    
+    %% LOAD DATASET
+    % -- select data set ---
+    % dataset = 'ASU_3red_620_labeled';
+    % dataset = 'ASU_2red_622_labeled';
+    % dataset = 'ASU_2red_300';
+    % dataset = 'ASU_3red_300';
+    % dataset = 'NSF_335';
+    % dataset = '200x_simulated_TUD_flame';           %100 with flame, 100 without flame (80% DoL)
+    % dataset = '200x_simulated_TUD_mirror';          %10 mirrored, 190 normal (80% DoL)
+    % dataset = '456_experimental_TUD_mirror';     %experimental dataset of which a few (~2%) are mirrored
+    
+    % -- choose number of particles --
+    % N = 200;     %length(subparticles)
+    
+    % -- set number of classes --
+    K = 12;          %set to 2 for the simulated TUD_flame dataset, this will give the correct classes
+                        %set to 4 for the other two datasets, and continue with STEP 5 using C=2        
+    
+    % -- choose number of final classes (C<K) --
+    C = 3; 
+    
+    % -- set width of visualization --
+    width = 1.0;
+    furtherClustering = false;
+    scale = 0.03;
+    nAngles = 12;
+    
+    load(['data/' dataset '/subParticles.mat'])
+    N = length(subParticles);
+    
+    outdir = ['output/' dataset];
+    if ~exist(outdir,'dir')
+        mkdir(outdir);
+    else
+        disp('Warning: outdir already exists')
+    end    
+    
+    save([outdir '/subParticles'], 'subParticles');
+    
+    %% STEP 1: all2all registration
+    disp("Starting all2all registration!");
+    
+    % perform all2all registration and save results on disk (can take long for many particles)
+                    % 0.01 for experimental TUD (in camera pixel units)
+                    % 0.03 for simulated TUD
+                    % 0.1 for NPC
+                    % 0.03 or Digits data
+                    % 0.15 for Letters data                
+                    % Look at Online Methods for the description
+    
+    tstart = tic;
+    
+    %all2all registration
+    all2all(subParticles, [outdir '/all2all_matrix'], scale, nAngles);           
+    
+    toc(tstart)
+    
+    %optional fusion of all particles (not necessary for classification)
+    
+    %disp("Starting optional fusion!");
+    
+    %[initAlignedParticles, M1] = outlier_removal(subParticles, [outdir '/all2all_matrix/'], outdir);        %Lie-algebraic averaging
+    %iters = 3;                                                                                                                                         %number of bootstrap iteration
+    %[superParticle, ~] = one2all(initAlignedParticles, iters, M1, outdir,scale, nAngles);                                      %bootstrapping
+    
+    %disp("Finished optional fusion!");
+    
+    disp("Finished all2all registration!");
+    
+    %% STEP 2: Multi-dimensional scaling
+    disp("Starting multi-dimensional scaling!");
+    
+    % load the similarity matrix and normalize with respect to number of localizations;
+    
+    disp("Loading similarity matrix!");
+    
+    [SimMatrix, SimMatrixNorm] = MakeMatrix(outdir,subParticles,N);  
+    
+    % dissimilarity matrix
+    disp("Calculating full similarity matrix!");
+    
+    D = SimMatrixNorm+SimMatrixNorm';                   % convert upper-triangular matrix to full similarity matrix
+    D = max(D(:))-D;                                                     % convert to dissimilarity
+    D = D - diag(diag(D));                                             % set diagonal to 0
+    save([outdir '/similarity_matrix'], 'D');
+    
+    disp("Performing MDS!");
+    
+    tstart = tic;
+    
     try
-        classes_aligned = alignClasses(subParticles, clusters, classes, scale, nAngles); 
-        classes_merged = eigenApproach(classes_aligned,C,width);
+        mds = mdscale(D,30,'Criterion','metricstress');     % perform multi-dimensional scaling
     catch E
         disp('Ran into error');
         disp(E);
-        exit
+        quit
     end
-
-    for i = 1:C
+    
+    toc(tstart)
+    
+    disp("Saving figure!");
+    
+    % show first three dimensions of MDS 
+    f = figure('visible', 'off'); scatter3(mds(:,1),mds(:,2),mds(:,3),'o','filled'), title 'Multidimensional Scaling'
+    saveas(f, [outdir '/MDS_3D.fig'], 'fig')
+    close(f)
+    
+    disp("Finished multi-dimensional scaling!");
+    
+    %% STEP3: k-means clustering
+    disp("Starting k-means clustering!");
+    
+    tstart = tic;
+    
+    clus = kmeans(mds,K,'replicates',1000);
+    [clus, K] = recluster(clus,K,mds);
+    
+    toc(tstart)
+    
+    clear clusters
+    for i = 1:K
+        clusters{i} = find(clus==i);
+    end
+    
+    save([outdir '/clusters'], 'clusters');
+    
+    disp("Saving figure!");
+    
+    f = figure('visible', 'off'); scatter3(mds(:,1),mds(:,2),mds(:,3),[],clus,'o','filled'), title 'Clustering result'
+    saveas(f, [outdir '/MDS_3D_clustered.fig'], 'fig')
+    close(f)
+    
+    disp("Finished k-means clustering!");
+    
+    %% STEP 4: Reconstruction per cluster
+    disp("Starting reconstruction per cluster!");
+    
+    iters = 2;      %number of bootstraps
+    
+    tstart = tic;
+    
+    [~,classes] = reconstructPerClassFunction(subParticles,clusters,outdir,scale,iters,nAngles);
+    
+    toc(tstart)
+    
+    save([outdir '/classes'], 'classes');
+    
+    %% Visualize results
+    close all
+    
+    %random particle
+    ran = randi(N);
+    f = figure('visible', 'off');
+    visualizeCloud2D(subParticles{ran}.points,200,width,0,'example particle',f);
+    saveas(f, [outdir '/rand_particle.fig'], 'fig')
+    close(f)
+    
+    %fusion of all particles without classification
+    % visualizeCloud2D(superParticle{end},200,width,0,'superParticle');
+    
+    % reconstructed clusters
+    for i = 1:length(classes)
+        str = ['class ' num2str(i) ' (' num2str(length(clusters{i})) ' particles)' ];
         f = figure('visible', 'off');
-        visualizeCloud2D(classes_merged{i},200,width,0,['class: ' num2str(i)],f);
-        saveas(f, [outdir '/class_merged_' num2str(i) '.fig'], 'fig')
+        visualizeCloud2D(classes{i}{end},200,width,0,str,f);
+        saveas(f, [outdir '/class_' num2str(i) '.fig'], 'fig')
         close(f)
     end
-
-    disp("Finished further clustering!");
+    
+    disp("Finished reconstruction per cluster!");
+    
+    %% (optional) STEP 5: further clustering - Eigen image method (C<K)
+    if furtherClustering
+        disp("Starting further clustering!");
+    
+        try
+            classes_aligned = alignClasses(subParticles, clusters, classes, scale, nAngles); 
+            classes_merged = eigenApproach(classes_aligned,C,width);
+        catch E
+            disp('Ran into error');
+            disp(E);
+            exit
+        end
+    
+        for i = 1:C
+            f = figure('visible', 'off');
+            visualizeCloud2D(classes_merged{i},200,width,0,['class: ' num2str(i)],f);
+            saveas(f, [outdir '/class_merged_' num2str(i) '.fig'], 'fig')
+            close(f)
+        end
+    
+        disp("Finished further clustering!");
+    end
 end

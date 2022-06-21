@@ -21,19 +21,7 @@ DISPLAY_DISTANCES = False
 DISPLAY_OPTIMIZATION_LANDSCAPE = False
 DISPLAY_GRID = False
 
-if __name__ == '__main__':
-    sys.path.append(str(Path(__file__).parent))
-
-    import argparse
-    parser = argparse.ArgumentParser()
-    parser.add_argument("input", help="Path to folder containing clusters.mat and subParticles.mat")
-    parser.add_argument("--output", "-o", help="Name of output file", default='final.mat')
-    parser.add_argument("--template", "-t", help="Origami template to use", default='nsf')
-    parser.add_argument("--cluster", "-c", help="Clustering method to use", default='kmeans')
-    parser.add_argument("--alignment", "-a", help="Alignment optimization method to use", default='differential_evolution')
-    parser.add_argument("--config", "-j", help="Path to config.json file", default=str(Path(__file__).parent.joinpath("config.json")))
-    args = parser.parse_args()
-
+def process_particles(args):
     template = importlib.import_module(f".{args.template}", package="templates")
 
     with Path(args.config).open() as f:
@@ -72,6 +60,7 @@ if __name__ == '__main__':
     n_particles = 0
     group_avgs = np.zeros(clusters.size)
     global_avg = 0
+    correct = 0
 
     # Loop over each identified class
     for class_id,groups in enumerate(clusters):
@@ -206,6 +195,9 @@ if __name__ == '__main__':
             global_avg += end - start
             group_avgs[class_id] += end - start
 
+            if template.read_match(raw_read, subParticles[group - 1]['group'][0][0][0]):
+                correct += 1
+
             picks[group - 1] = np.array([(
                 points,
                 subParticles[group - 1]['sigma'][0][0],
@@ -229,3 +221,20 @@ if __name__ == '__main__':
 
     # Save all read results
     savemat(str(f.joinpath(args.output)), { 'picks': picks, 'config': config, 'args': vars(args) })
+
+    return correct, n_particles
+
+if __name__ == '__main__':
+    sys.path.append(str(Path(__file__).parent))
+
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument("input", help="Path to folder containing clusters.mat and subParticles.mat")
+    parser.add_argument("--output", "-o", help="Name of output file", default='final.mat')
+    parser.add_argument("--template", "-t", help="Origami template to use", default='nsf')
+    parser.add_argument("--cluster", "-c", help="Clustering method to use", default='kmeans')
+    parser.add_argument("--alignment", "-a", help="Alignment optimization method to use", default='differential_evolution')
+    parser.add_argument("--config", "-j", help="Path to config.json file", default=str(Path(__file__).parent.joinpath("config.json")))
+    args = parser.parse_args()
+
+    process_particles(args)
