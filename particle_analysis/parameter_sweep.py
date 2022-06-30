@@ -5,9 +5,7 @@ import json
 import sys
 import csv
 
-from process_particles_nocluster import process_particles_nocluster
-from process_particles import process_particles
-from process_reads import process_reads
+from process_clusters_kmeans import process_clusters_kmeans
 
 if __name__ == '__main__':
     sys.path.append(str(Path(__file__).parent))
@@ -15,9 +13,9 @@ if __name__ == '__main__':
     import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument("input", help="Path to folder containing clusters.mat and/or subParticles.mat")
+    parser.add_argument("--infile", help="Name of clustering output file to read", default='clusters.mat')
     parser.add_argument("--config", "-j", help="Path to base config template to use", default=str(Path(__file__).parent.joinpath("config.json")))
     parser.add_argument("--template", "-t", help="Origami template to use", default='nsf')
-    parser.add_argument("--cluster", "-c", help="Whether clustering has been performed", type=bool, default=False)
     args = parser.parse_args()
 
     with Path(args.config).open() as f:
@@ -29,8 +27,10 @@ if __name__ == '__main__':
 
     if not csv_path.exists():
         write_header = True
+    else:
+        write_header = False
 
-    with csv_path.open("w") as f:
+    with csv_path.open("a") as f:
         writer = csv.DictWriter(f, fieldnames=field_names)
 
         if write_header:
@@ -52,26 +52,17 @@ if __name__ == '__main__':
 
                 particle_args = {
                     "input": args.input,
+                    "infile": args.infile,
                     "template": args.template,
                     "cluster": "kmeans",
                     "alignment": "differential_evolution",
                     "config": str(config_f),
                     "output": out_name + ".mat"
                 }
-                read_args = {
-                    "input": args.input,
-                    "template": args.template,
-                    "infile": particle_args["output"],
-                    "output": out_name
-                }
 
                 particle_args = SimpleNamespace(**particle_args)
-                read_args = SimpleNamespace(**read_args)
 
-                if args.cluster:
-                    correct, n_particles = process_particles(particle_args)
-                else:
-                    correct, n_particles = process_particles_nocluster(particle_args)
+                correct, n_particles = process_clusters_kmeans(particle_args, False)
                 
                 data.append({"elbow_threshold": i, "size_threshold": j, "correct": correct, "total": n_particles})
                 writer.writerow(data[-1])

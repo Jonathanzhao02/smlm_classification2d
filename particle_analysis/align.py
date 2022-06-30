@@ -37,7 +37,7 @@ class GridAlignment():
     
     def squareNNDist(self,tm):
         self.transformGrid(tm)
-        multiplier = (np.setdiff1d(self.orientation_idxes, self.nn[1]).size + 1) ** 2
+        multiplier = np.sqrt(np.setdiff1d(self.orientation_idxes, self.nn[1]).size + 1)
         return np.sum(np.multiply(self.nn[0],self.grid_weights[self.nn[1]],self.point_weights)**2, dtype=np.float64) * multiplier / self.points.shape[0]
     
     # [dx, dy, dsx, dsy, dt]

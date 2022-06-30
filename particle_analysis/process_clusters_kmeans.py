@@ -85,7 +85,7 @@ def plot(points, centroids, centroid_assignments, grid, pick_read, cost, templat
     plt.savefig(fname)
     plt.close()
 
-def process_clusters_kmeans(args):
+def process_clusters_kmeans(args, serialize):
     template = importlib.import_module(f".{args.template}", package="templates")
 
     with Path(args.config).open() as f:
@@ -121,15 +121,16 @@ def process_clusters_kmeans(args):
     global_avg = 0
     correct = 0
 
-    field_names = ["PickID", "PickGroup", "ClusterID", "NumLocs"]
-    filt_csv_data = []
-    csv_data = []
+    if serialize:
+        field_names = ["PickID", "PickGroup", "ClusterID", "NumLocs"]
+        filt_csv_data = []
+        csv_data = []
 
-    out_path = f.joinpath(args.outfolder)
-    out_path.mkdir(exist_ok=True)
+        out_path = f.joinpath(args.outfolder)
+        out_path.mkdir(exist_ok=True)
 
-    out_f = out_path.joinpath('imgs')
-    out_f.mkdir(exist_ok=True)
+        out_f = out_path.joinpath('imgs')
+        out_f.mkdir(exist_ok=True)
 
     # Loop over each particle
     for idx in range(n_particles):
@@ -154,7 +155,7 @@ def process_clusters_kmeans(args):
         )
         
         aargs = config['alignment_optimizers'][alignment_method]
-        alignment = GridAlignment(template.GRID, centroids, template.GRID_WEIGHTS, 1. / cluster_sizes, template.ORIENTATION_IDXES)
+        alignment = GridAlignment(template.GRID, centroids, template.GRID_WEIGHTS, cluster_sizes, template.ORIENTATION_IDXES)
         print('Calculating transform')
         cost, tr = alignment.align(template.BOUNDS, method=alignment_method, method_args=aargs)
         print(cost, tr)
@@ -174,23 +175,24 @@ def process_clusters_kmeans(args):
         if correct_read:
             correct += 1
         
-        plot(clusters['points'], centroids, centroid_assignments, alignment.gridTran, raw_read, cost, template, group, str(out_f.joinpath(f'{group}.png')))
-        
-        for i in range(n_clusters):
-            filt_csv_data.append({
-                "PickID": idx,
-                "PickGroup": group,
-                "ClusterID": i,
-                "NumLocs": cluster_sizes[i]
-            })
-        
-        for i in range(cluster_results['n_clusters'][0][0]):
-            csv_data.append({
-                "PickID": idx,
-                "PickGroup": group,
-                "ClusterID": i,
-                "NumLocs": cluster_results['cluster_sizes'][0][i]
-            })
+        if serialize:
+            plot(clusters['points'], centroids, centroid_assignments, alignment.gridTran, raw_read, cost, template, group, str(out_f.joinpath(f'{group}.png')))
+            
+            for i in range(n_clusters):
+                filt_csv_data.append({
+                    "PickID": idx,
+                    "PickGroup": group,
+                    "ClusterID": i,
+                    "NumLocs": cluster_sizes[i]
+                })
+            
+            for i in range(cluster_results['n_clusters'][0][0]):
+                csv_data.append({
+                    "PickID": idx,
+                    "PickGroup": group,
+                    "ClusterID": i,
+                    "NumLocs": cluster_results['cluster_sizes'][0][i]
+                })
 
         picks[idx] = np.array([(
             clusters['points'],
@@ -211,15 +213,16 @@ def process_clusters_kmeans(args):
     print(global_avg)
 
     # Save all read results
-    with out_path.joinpath("clusters.csv").open('w') as f:
-        writer = csv.DictWriter(f, fieldnames=field_names)
-        writer.writeheader()
-        writer.writerows(csv_data)
-    
-    with out_path.joinpath("filt_clusters.csv").open('w') as f:
-        writer = csv.DictWriter(f, fieldnames=field_names)
-        writer.writeheader()
-        writer.writerows(filt_csv_data)
+    if serialize:
+        with out_path.joinpath("clusters.csv").open('w') as f:
+            writer = csv.DictWriter(f, fieldnames=field_names)
+            writer.writeheader()
+            writer.writerows(csv_data)
+        
+        with out_path.joinpath("filt_clusters.csv").open('w') as f:
+            writer = csv.DictWriter(f, fieldnames=field_names)
+            writer.writeheader()
+            writer.writerows(filt_csv_data)
 
     savemat(str(Path(args.input).joinpath(args.output)), { 'picks': picks, 'config': config, 'args': vars(args) })
 
@@ -239,4 +242,4 @@ if __name__ == '__main__':
     parser.add_argument("--config", "-j", help="Path to config.json file", default=str(Path(__file__).parent.joinpath("config.json")))
     args = parser.parse_args()
 
-    process_clusters_kmeans(args)
+    process_clusters_kmeans(args, True)
