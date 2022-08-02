@@ -137,7 +137,7 @@ def process_particles(args):
                     plt.show()
                 
                 aargs = config['alignment_optimizers'][alignment_method]
-                alignment = GridAlignment(template.GRID, centroids, template.GRID_WEIGHTS, 1. / cluster.cluster_sizes, template.ORIENTATION_IDXES)
+                alignment = GridAlignment(template.GRID, centroids, template.GRID_WEIGHTS, cluster.cluster_sizes, template.ORIENTATION_IDXES)
                 print('Calculating transform')
                 cost, tr = alignment.align(template.BOUNDS, method=alignment_method, method_args=aargs)
                 print(cost, tr)

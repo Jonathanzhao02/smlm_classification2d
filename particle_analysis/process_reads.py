@@ -1,6 +1,7 @@
 from scipy.io import loadmat
 from scipy.spatial import cKDTree
 from pathlib import Path
+from tqdm.auto import tqdm
 import matplotlib.pyplot as plt
 import numpy as np
 import importlib
@@ -23,7 +24,7 @@ def save_images(raw_reads, groups, points, centroids, costs, clusters, grids, in
     grids_mis = grids[indices]
     n_picks_mis = indices.sum()
 
-    for i in range(n_picks_mis):
+    for i in tqdm(range(n_picks_mis)):
         pick_group = bytes.decode(groups_mis[i])
         pick_points = points_mis[i]
         pick_centroids = centroids_mis[i]
@@ -243,18 +244,18 @@ def process_reads(args):
     for key in distance_errors.keys():
         plt.figure(figsize=(8,8))
 
-        ax1 = plt.subplot(2, 2, 1)
-        ax2 = plt.subplot(2, 2, 2)
-        ax3 = plt.subplot(2, 2, 3)
+        ax1 = plt.subplot(2, 1, 1)
+        ax2 = plt.subplot(2, 1, 2)
+        # ax3 = plt.subplot(2, 2, 3)
 
         ax1.set_title(f"Class {key} False Negatives")
         ax2.set_title(f"Class {key} False Positives")
-        ax3.set_title(f"Class {key} Distances")
+        # ax3.set_title(f"Class {key} Distances")
         
         for i,point in enumerate(template.GRID):
             ax1.text(*point, str(bit_fn_errors[key][i]), ha='center', va='center')
             ax2.text(*point, str(bit_fp_errors[key][i]), ha='center', va='center')
-            ax3.text(*point, f'{distance_errors[key][i]:.2e}', ha='center', va='center')
+            # ax3.text(*point, f'{distance_errors[key][i]:.2e}', ha='center', va='center')
         
         x = template.GRID[:,0]
         y = template.GRID[:,1]
@@ -263,8 +264,8 @@ def process_reads(args):
         ax1.set_ylim(y.min() * 1.5,y.max() * 1.5)
         ax2.set_xlim(x.min() * 1.5,x.max() * 1.5)
         ax2.set_ylim(y.min() * 1.5,y.max() * 1.5)
-        ax3.set_xlim(x.min() * 1.5,x.max() * 1.5)
-        ax3.set_ylim(y.min() * 1.5,y.max() * 1.5)
+        # ax3.set_xlim(x.min() * 1.5,x.max() * 1.5)
+        # ax3.set_ylim(y.min() * 1.5,y.max() * 1.5)
 
         plt.savefig(out_f.joinpath(f'bit_errs_{key}.png'))
 
@@ -274,6 +275,58 @@ def process_reads(args):
             plt.close()
     
     print(f"Correctly read {correct_reads.sum()} / {n_picks} picks, {correct_reads.sum() / n_picks * 100:.2f}%")
+
+    with out_f.joinpath('pattern_bits.csv').open('w') as f:
+        field_names = ['Pattern', 'PositionIndex', 'TP', 'FN', 'TN', 'FP']
+        writer = csv.DictWriter(f, fieldnames=field_names)
+        writer.writeheader()
+
+        data_rows = []
+
+        for key in distance_errors.keys():
+            filt_picks = np.array(list(map(lambda x: x.decode().startswith(key), groups)), dtype=bool)
+
+            total = filt_picks.sum()
+            fp = bit_fp_errors[key]
+            fn = bit_fn_errors[key]
+            tp = total - fn
+            tn = total - fp
+            idxes = template.GRID.shape[0]
+
+            for i in range(idxes):
+                data_rows.append({ key: None for key in field_names })
+                data_rows[-1]['Pattern'] = key
+                data_rows[-1]['PositionIndex'] = i
+                data_rows[-1]['TP'] = tp[i]
+                data_rows[-1]['FN'] = fn[i]
+                data_rows[-1]['TN'] = tn[i]
+                data_rows[-1]['FP'] = fp[i]
+
+        writer.writerows(data_rows)
+
+    with out_f.joinpath('raw_bits.csv').open('w') as f:
+        field_names = ['Pattern', 'ID', 'PositionIndex', 'Predicted', 'Actual']
+        writer = csv.DictWriter(f, fieldnames=field_names)
+        writer.writeheader()
+
+        data_rows = []
+
+        for i in range(n_picks):
+            read = raw_reads[i]
+            group = bytes.decode(groups[i])
+            g_bin = template.binnify(group)
+            target = template.true_read(group)
+            idxes = template.GRID.shape[0]
+
+            for j in range(idxes):
+                data_rows.append({ key: None for key in field_names })
+                data_rows[-1]['Pattern'] = g_bin
+                data_rows[-1]['ID'] = group
+                data_rows[-1]['PositionIndex'] = j
+                data_rows[-1]['Predicted'] = read[j]
+                data_rows[-1]['Actual'] = target[j]
+
+        writer.writerows(data_rows)
 
     # Saves images of misclassified particles
     out_path = out_f.joinpath('misclassifications')

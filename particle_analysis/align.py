@@ -109,6 +109,8 @@ class GridAlignment():
         elif method == 'rough':
             self.roughClock(**method_args["init"])
             fval = minimize(self.squareNNDist, [self.dx, self.dy, self.dsx, self.dsy, self.dt], bounds=bounds, **method_args["final"])
+        elif method == 'finetune':
+            fval = minimize(self.squareNNDist, [self.dx, self.dy, self.dsx, self.dsy, self.dt], bounds=bounds, **method_args)
         else:
             raise Exception(f"Invalid optimization method: {method}")
         self.dx, self.dy, self.dsx, self.dsy, self.dt = fval.x
