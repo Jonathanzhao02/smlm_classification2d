@@ -7,6 +7,10 @@ import csv
 
 from process_clusters_kmeans import process_clusters_kmeans
 
+'''
+This script conducts a parameter sweep to find the best parameters for K-Means clustering
+'''
+
 if __name__ == '__main__':
     sys.path.append(str(Path(__file__).parent))
 

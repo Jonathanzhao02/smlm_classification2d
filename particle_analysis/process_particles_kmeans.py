@@ -7,6 +7,10 @@ import numpy as np
 import json
 import sys
 
+'''
+This script performs K-means clustering over a set of origami and saves all results to a file
+'''
+
 VALID_TEMPLATE_NAMES = ['nsf', 'asu_2', 'asu_3']
 
 cluster_results_dtype = np.dtype([

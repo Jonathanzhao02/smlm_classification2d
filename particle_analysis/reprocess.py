@@ -8,6 +8,11 @@ import json
 import sys
 import csv
 
+'''
+This script reprocesses the clustering results to get the shear angle for each origami
+In addition, it saves the non-sheared grid of one origami
+'''
+
 def calc_shear(sx, sy, dt):
     num = (sy * sy - sx * sx) * np.sin(dt) * np.cos(dt)
     den = np.sqrt(sx * sx * np.sin(dt) ** 2 + sy * sy * np.cos(dt) ** 2) * np.sqrt(sx * sx * np.cos(dt) ** 2 + sy * sy * np.sin(dt) ** 2)

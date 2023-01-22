@@ -8,6 +8,10 @@ import importlib
 import sys
 import csv
 
+'''
+This script extracts various statistics from the final readout results
+'''
+
 # General params
 DISPLAY_HISTOGRAM = False
 DISPLAY_TEMPLATES = False

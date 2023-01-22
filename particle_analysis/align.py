@@ -8,6 +8,9 @@ from tqdm.auto import tqdm
 import matplotlib.pyplot as plt
 
 class GridAlignment():
+    '''
+    Aligns a set of centroids to a grid through MSE optimization
+    '''
     def __init__(self, grid, points, grid_weights=None, point_weights=None, orientation_idxes=None, recenter=False):
         self.grid = np.copy(grid)
         self.points = np.copy(points)
@@ -139,6 +142,13 @@ class GridAlignment():
         return self.squareNNDist([self.dx,self.dy,self.dsx,self.dsy,self.dt])
 
 class LocalizationCluster:
+    '''
+    Code modified from the paper "An Alternative Approach to Nucleic Acid Memory"
+
+    Dickinson, G.D., Mortuza, G.M., Clay, W. et al. An alternative approach to nucleic acid memory.
+    Nat Commun 12, 2371 (2021). https://doi.org/10.1038/s41467-021-22277-y
+    '''
+
     def __init__(self,grid,localizations,globalDeltaX,recenter):
         """Class container for localization and grid points, fitting functions"""
         #grid NX2 array of x,y localizations NX3 array of x,y,prec

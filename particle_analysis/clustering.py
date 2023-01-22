@@ -5,6 +5,9 @@ import numpy as np
 from tqdm.auto import tqdm
 
 class KMeansClusterIdentification():
+    '''
+    Extracts a set of centroids from localization data using K-Means clustering
+    '''
     def __init__(self, points):
         self.points = points
         self.n_clusters = 0
@@ -78,6 +81,9 @@ class KMeansClusterIdentification():
             plt.show()
 
 class DBSCANClusterIdentification():
+    '''
+    Extracts a set of centroids from localization data using DBSCAN
+    '''
     def __init__(self, points):
         self.points = points
     
@@ -113,6 +119,9 @@ class DBSCANClusterIdentification():
             plt.show()
 
 class MeanShiftClusterIdentification():
+    '''
+    Extracts a set of centroids from localization data using mean-shift clustering
+    '''
     def __init__(self, points):
         self.points = points
     

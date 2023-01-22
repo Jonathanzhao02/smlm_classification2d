@@ -10,6 +10,10 @@ import sys
 from clustering import KMeansClusterIdentification, DBSCANClusterIdentification, MeanShiftClusterIdentification
 from align import GridAlignment, LocalizationCluster
 
+'''
+This script performs clustering and alignment over all origami within a file
+'''
+
 VALID_CLUSTER_METHODS = ['kmeans', 'dbscan', 'meanshift', 'mle']
 VALID_ALIGNMENT_METHODS = ['differential_evolution', 'shgo', 'dual_annealing', 'rough']
 VALID_TEMPLATE_NAMES = ['nsf', 'asu_2', 'asu_3']

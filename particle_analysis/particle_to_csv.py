@@ -8,6 +8,10 @@ import json
 import sys
 import csv
 
+'''
+This script extracts the localization data, centroids, and aligned grid of a single origami into a CSV
+'''
+
 def filter_by_inertia(clusters, cargs):
     d_inertias = clusters['inertia_curve']
     dists = np.abs(d_inertias - cargs['elbow_threshold'])

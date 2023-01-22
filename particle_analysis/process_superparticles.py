@@ -9,6 +9,10 @@ import sys
 from clustering import KMeansClusterIdentification, DBSCANClusterIdentification, MeanShiftClusterIdentification
 from align import GridAlignment, LocalizationCluster
 
+'''
+This script clusters and aligns the superparticles created from spectral clustering
+'''
+
 VALID_CLUSTER_METHODS = ['kmeans', 'dbscan', 'meanshift', 'mle']
 VALID_ALIGNMENT_METHODS = ['differential_evolution', 'shgo', 'dual_annealing', 'rough']
 VALID_TEMPLATE_NAMES = ['nsf', 'asu_2', 'asu_3']

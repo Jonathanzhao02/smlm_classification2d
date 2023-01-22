@@ -10,6 +10,10 @@ import csv
 
 from align import GridAlignment, LocalizationCluster
 
+'''
+This script processes the K-means results to find the optimal number of clusters and perform alignment
+'''
+
 VALID_ALIGNMENT_METHODS = ['differential_evolution', 'shgo', 'dual_annealing', 'rough']
 VALID_TEMPLATE_NAMES = ['nsf', 'asu_2', 'asu_3']
 
