@@ -242,4 +242,5 @@ if __name__ == '__main__':
     parser.add_argument("--config", "-j", help="Path to config.json file", default=str(Path(__file__).parent.joinpath("config.json")))
     args = parser.parse_args()
 
-    process_clusters_kmeans(args, True)
+    correct, n_particles = process_clusters_kmeans(args, True)
+    print(f"{correct} / {n_particles}")

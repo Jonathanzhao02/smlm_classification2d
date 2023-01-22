@@ -115,13 +115,17 @@ def process_reads(args):
     bit_fn_errors = {}
     bin_counts = {}
 
+    n_correct = 0
+
     for i in range(n_picks):
         read = raw_reads[i]
         cluster = clusters[i]
-        correct = correct_reads[i]
+        # correct = correct_reads[i]
         group = bytes.decode(groups[i])
         target = template.true_read(group)
         g_bin = template.binnify(group)
+        
+        correct_reads[i] = template.read_match(read, group)
 
         grid = grids[i]
         centroid = centroids[i]

@@ -1,6 +1,12 @@
 import numpy as np
 
 # TEMPLATE 1: 3x3 grid w/ 3 offset orientation markers
+# 1 2
+# 0
+#    5  4  3
+#    8  7  6
+#    11 10 9
+#
 DIST_THRESH = np.inf
 SCALE = 0.18
 GRID = np.array([
