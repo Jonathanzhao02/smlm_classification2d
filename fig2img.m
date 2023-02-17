@@ -13,16 +13,17 @@ addpath(genpath('matlab_functions'))
 
 %% LOAD DATASET
 % -- select data set ---
-dataset = 'ASU_2red_30_labeled';
+% dataset = 'ASU_2red_30_labeled';
 % dataset = 'ASU_3red_300';
 % dataset = 'ASU_2red_300';
 % dataset = 'NSF_335';
 % dataset = '200x_simulated_TUD_flame';           %100 with flame, 100 without flame (80% DoL)
 % dataset = '200x_simulated_TUD_mirror';          %10 mirrored, 190 normal (80% DoL)
 % dataset = '456_experimental_TUD_mirror';     %experimental dataset of which a few (~2%) are mirrored
+dataset = 'ASU_2red_584_labeled_cropped';
 
 % -- set number of classes --
-K = 3;          %set to 2 for the simulated TUD_flame dataset, this will give the correct classes
+K = 4;          %set to 2 for the simulated TUD_flame dataset, this will give the correct classes
                     %set to 4 for the other two datasets, and continue with STEP 5 using C=2        
 
 % -- choose number of final classes (C<K) --

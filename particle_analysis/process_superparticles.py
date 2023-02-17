@@ -19,7 +19,7 @@ VALID_TEMPLATE_NAMES = ['nsf', 'asu_2', 'asu_3']
 
 # General params
 DISPLAY_PARTICLE = True
-DISPLAY_FINAL_CLUSTER = True
+DISPLAY_FINAL_CLUSTER = False
 DISPLAY_DISTANCES = False
 DISPLAY_GRID = True
 
@@ -66,7 +66,7 @@ if __name__ == '__main__':
             plt.title(f'Class {class_id}')
             plt.plot(x,y,',')
             plt.show()
-        
+                
         cargs = config['methods'][cluster_method][args.template]
 
         if cluster_method != 'mle':
@@ -115,6 +115,11 @@ if __name__ == '__main__':
             #cost, tr = alignment.align(BOUNDS, method='rough', method_args={ 'gridsize': SCALE / 4., 'steps': 8 })
             cost, tr = alignment.align(template.BOUNDS, method=alignment_method, method_args=aargs)
             print(cost, tr)
+
+            nn = np.unique(alignment.nn[1]) # read out binary
+            raw_read = np.zeros(template.GRID.shape[0])
+            raw_read[nn] = 1
+            print(template.to_string(template.readout(raw_read)))
 
             if DISPLAY_GRID:
                 gridTran = alignment.gridTran

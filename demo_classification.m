@@ -24,7 +24,8 @@
 %
 % Teun Huijben, 2020
 %%  
-for dset={'A_2red_211_labeled','A_3red_206_labeled','S_2red_206_labeled','S_3red_210_labeled','U_2red_206_labeled','U_3red_207_labeled'}
+% for dset={'A_2red_211_labeled','A_3red_206_labeled','S_2red_206_labeled','S_3red_210_labeled','U_2red_206_labeled','U_3red_207_labeled'}
+for dset={'ASU_2red_584_labeled_cropped'}
     close all
     clearvars -except dset
     clc
@@ -50,7 +51,7 @@ for dset={'A_2red_211_labeled','A_3red_206_labeled','S_2red_206_labeled','S_3red
     % N = 200;     %length(subparticles)
     
     % -- set number of classes --
-    K = 12;          %set to 2 for the simulated TUD_flame dataset, this will give the correct classes
+    K = 4;          %set to 2 for the simulated TUD_flame dataset, this will give the correct classes
                         %set to 4 for the other two datasets, and continue with STEP 5 using C=2        
     
     % -- choose number of final classes (C<K) --
