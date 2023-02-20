@@ -1,3 +1,6 @@
+'''
+This script merges several .mat files into a single one
+'''
 import numpy as np
 from scipy.io import savemat, loadmat
 from pathlib import Path
@@ -6,7 +9,7 @@ if __name__ == '__main__':
     import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument("input", help="Path to folder of .mat files to merge")
-    parser.add_argument("output", help="Name of folder to output to in data")
+    parser.add_argument("output", help="Name of folder output to")
     parser.add_argument("--picks", "-p", help="Number of picks to draw from each file", type=int, default=0)
     args = parser.parse_args()
     

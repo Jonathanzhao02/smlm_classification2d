@@ -1,3 +1,6 @@
+'''
+This script converts an hdf5 file from Picasso into a .mat file
+'''
 import h5py as h5
 import numpy as np
 from scipy.io import savemat
