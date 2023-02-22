@@ -1,3 +1,11 @@
+# Software for DNA origami cryptography in 2D and 3D space
+
+This software borrows the method employed in the paper "Detecting Structural Heterogeneity in Single-Molecule Localization Microscopy Data" while implementing its own K-means and cluster analysis.
+
+For more information on cluster analysis, see the `README.md` in `particle_analysis`.
+
+For full results from both methods, see [this link](https://www.dropbox.com/sh/48cj5v1qc5ny246/AABSLdFF__FomtCsfQaXNi2Xa?dl=0).
+
 # Software for Detecting Structural Heterogeneity in Single-Molecule Localization Microscopy Data. 
 
 This software implements the a-priori knowledge-free unsupervised classification of structurally different particles, employing the Bhattacharya cost function as dissimilarity metrix. 
