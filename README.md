@@ -2,6 +2,8 @@
 
 This software borrows the method employed in the paper "Detecting Structural Heterogeneity in Single-Molecule Localization Microscopy Data".
 
+The detected clusters are further analyzed using the code in [this repository](https://github.com/Jonathanzhao02/dna-paint-template-alignment).
+
 For full results, see [this link](https://www.dropbox.com/sh/48cj5v1qc5ny246/AABSLdFF__FomtCsfQaXNi2Xa?dl=0).
 
 Open up MATLAB and navigate to the parent directory of all .m scripts.
